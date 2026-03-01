@@ -10,10 +10,10 @@ metadata:
 spec:
   project: default
   source:
-    # TODO: Thay bằng Git repo URL thực tế
-    repoURL: https://github.com/<your-org>/demo-worker.git
+    # TODO: Tạo repo riêng cho demo-worker sau
+    repoURL: git@github.com:john-naeder/slsa-k8s-platform.git
     targetRevision: main
-    path: k8s
+    path: code/src/demo-worker/k8s
   destination:
     server: https://kubernetes.default.svc
     namespace: demo

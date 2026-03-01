@@ -16,8 +16,7 @@ metadata:
 spec:
   project: default
   source:
-    # TODO: Thay bằng Git repo URL thực tế
-    repoURL: https://github.com/<your-org>/thesis-infra.git
+    repoURL: git@github.com:john-naeder/slsa-k8s-platform.git
     targetRevision: main
     path: code/infra/k8s/manifests/kafka   # Kafka + KafkaTopic CRDs
   destination:

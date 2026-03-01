@@ -10,10 +10,10 @@ metadata:
 spec:
   project: default
   source:
-    # TODO: Thay bằng Git repo URL thực tế
-    repoURL: https://github.com/<your-org>/demo-api.git
+    # TODO: Tạo repo riêng cho demo-api sau
+    repoURL: git@github.com:john-naeder/slsa-k8s-platform.git
     targetRevision: main
-    path: k8s   # Thư mục chứa deployment.yaml, service.yaml, ingress.yaml
+    path: code/src/demo-api/k8s   # Thư mục chứa deployment.yaml, service.yaml, ingress.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: demo
