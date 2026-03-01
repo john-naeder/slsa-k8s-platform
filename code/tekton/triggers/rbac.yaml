@@ -22,8 +22,7 @@ kind: Role
 metadata:
   name: tekton-triggers-role
   namespace: tekton-pipelines
-spec:
-  rules:
+rules:
     # Triggers resources
     - apiGroups: ["triggers.tekton.dev"]
       resources:
