@@ -1,0 +1,87 @@
+# build-and-sign Pipeline — SLSA L3 CI pipeline
+# Clone → Build with Kaniko → Chains auto-signs & generates provenance
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: build-and-sign
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/part-of: slsa-pipeline
+spec:
+  description: >-
+    SLSA L3 build pipeline: clone source, build OCI image with Kaniko,
+    push to Harbor. Tekton Chains automatically signs the image and
+    generates in-toto SLSA provenance attestation.
+  params:
+    - name: repo-url
+      description: Git repository URL
+      type: string
+    - name: revision
+      description: Git revision (branch/tag/sha)
+      type: string
+      default: "main"
+    - name: image
+      description: Full image reference (e.g. harbor.kythuat.vn/demo/demo-api:v1.0.0)
+      type: string
+    - name: dockerfile
+      description: Path to Dockerfile relative to context
+      type: string
+      default: "./Dockerfile"
+    - name: context
+      description: Build context (subdirectory within the repo)
+      type: string
+      default: "."
+
+  workspaces:
+    - name: shared-workspace
+      description: Shared workspace for source code
+    - name: ssh-credentials
+      optional: true
+      description: SSH key for private Git repos
+    - name: docker-credentials
+      optional: true
+      description: Docker config for registry auth
+
+  results:
+    - name: IMAGE_URL
+      description: The image URL produced by the build
+      value: $(tasks.build.results.IMAGE_URL)
+    - name: IMAGE_DIGEST
+      description: The image digest produced by the build
+      value: $(tasks.build.results.IMAGE_DIGEST)
+    - name: COMMIT_SHA
+      description: Git commit SHA that was built
+      value: $(tasks.clone.results.commit)
+
+  tasks:
+    # ── Step 1: Clone source ─────────────────────────────
+    - name: clone
+      taskRef:
+        name: git-clone
+      workspaces:
+        - name: output
+          workspace: shared-workspace
+        - name: ssh-directory
+          workspace: ssh-credentials
+      params:
+        - name: url
+          value: $(params.repo-url)
+        - name: revision
+          value: $(params.revision)
+
+    # ── Step 2: Build & Push image ───────────────────────
+    - name: build
+      taskRef:
+        name: kaniko-build
+      runAfter:
+        - clone
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+      params:
+        - name: IMAGE
+          value: $(params.image)
+        - name: DOCKERFILE
+          value: $(params.dockerfile)
+        - name: CONTEXT
+          value: $(params.context)

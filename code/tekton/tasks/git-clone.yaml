@@ -1,0 +1,88 @@
+# git-clone Task — clone a Git repository into a workspace
+# Based on Tekton Catalog git-clone v0.9
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: git-clone
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/part-of: slsa-pipeline
+spec:
+  description: >-
+    Clone a Git repository into a shared workspace.
+  params:
+    - name: url
+      description: Repository URL to clone
+      type: string
+    - name: revision
+      description: Branch, tag, or commit SHA to checkout
+      type: string
+      default: "main"
+    - name: subdirectory
+      description: Subdirectory inside workspace to clone into
+      type: string
+      default: ""
+    - name: deleteExisting
+      description: Delete any existing contents before cloning
+      type: string
+      default: "true"
+  results:
+    - name: commit
+      description: The precise commit SHA that was checked out
+    - name: url
+      description: The precise URL that was fetched
+  workspaces:
+    - name: output
+      description: Workspace where the repo is cloned
+    - name: ssh-directory
+      optional: true
+      description: SSH credentials for private repos
+  steps:
+    - name: clone
+      image: alpine/git:2.47.2
+      env:
+        - name: PARAM_URL
+          value: $(params.url)
+        - name: PARAM_REVISION
+          value: $(params.revision)
+        - name: PARAM_SUBDIRECTORY
+          value: $(params.subdirectory)
+        - name: PARAM_DELETE_EXISTING
+          value: $(params.deleteExisting)
+        - name: WORKSPACE_OUTPUT_PATH
+          value: $(workspaces.output.path)
+        - name: WORKSPACE_SSH_DIRECTORY_BOUND
+          value: $(workspaces.ssh-directory.bound)
+        - name: WORKSPACE_SSH_DIRECTORY_PATH
+          value: $(workspaces.ssh-directory.path)
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+      script: |
+        #!/usr/bin/env sh
+        set -eu
+
+        CHECKOUT_DIR="${WORKSPACE_OUTPUT_PATH}/${PARAM_SUBDIRECTORY}"
+
+        if [ "${PARAM_DELETE_EXISTING}" = "true" ] && [ -d "${CHECKOUT_DIR}" ]; then
+          rm -rf "${CHECKOUT_DIR:?}/"*
+          rm -rf "${CHECKOUT_DIR}/."[!.]* 2>/dev/null || true
+        fi
+
+        # Setup SSH if provided
+        if [ "${WORKSPACE_SSH_DIRECTORY_BOUND}" = "true" ]; then
+          cp -R "${WORKSPACE_SSH_DIRECTORY_PATH}" "${HOME}/.ssh"
+          chmod 700 "${HOME}/.ssh"
+          chmod -R 400 "${HOME}/.ssh"/*
+          ssh-keyscan github.com >> "${HOME}/.ssh/known_hosts" 2>/dev/null
+        fi
+
+        git clone "${PARAM_URL}" "${CHECKOUT_DIR}"
+        cd "${CHECKOUT_DIR}"
+        git checkout "${PARAM_REVISION}"
+
+        RESULT_SHA=$(git rev-parse HEAD)
+        printf "%s" "${RESULT_SHA}" > "$(results.commit.path)"
+        printf "%s" "${PARAM_URL}" > "$(results.url.path)"
+
+        echo "Cloned ${PARAM_URL} @ ${RESULT_SHA}"

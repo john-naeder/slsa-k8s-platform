@@ -1,0 +1,28 @@
+# Tekton Chains configuration — SLSA L3 provenance
+# Applied to ConfigMap chains-config in tekton-chains namespace
+#
+# Usage:
+#   kubectl apply -f chains-config.yaml
+#
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: chains-config
+  namespace: tekton-chains
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-chains
+data:
+  # ── Provenance format ──────────────────────────────────
+  # Use in-toto SLSA provenance format for TaskRun and PipelineRun
+  artifacts.taskrun.format: "in-toto"
+  artifacts.taskrun.storage: "oci"
+  artifacts.pipelinerun.format: "in-toto"
+  artifacts.pipelinerun.storage: "oci"
+
+  # ── OCI artifact storage ───────────────────────────────
+  artifacts.oci.storage: "oci"
+
+  # ── Transparency log ───────────────────────────────────
+  # Disabled — self-hosted environment without public Rekor
+  transparency.enabled: "false"

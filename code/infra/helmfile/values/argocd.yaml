@@ -20,13 +20,15 @@ server:
       memory: 256Mi
 
 # Controller
+# NOTE: 512Mi gây OOM khi quản lý monitoring app (nhiều ConfigMaps).
+# kube-prometheus-stack tạo ~40 Grafana dashboard ConfigMaps → controller cần >512Mi để diff.
 controller:
   resources:
     requests:
       cpu: 100m
-      memory: 128Mi
+      memory: 256Mi
     limits:
-      memory: 512Mi
+      memory: 1Gi
 
 # Repo server
 repoServer:

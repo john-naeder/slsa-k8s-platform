@@ -1,0 +1,37 @@
+# Example PipelineRun — build demo-api image
+# Usage: kubectl create -f demo-api-run.yaml
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: demo-api-build-
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/part-of: slsa-pipeline
+    tekton.dev/pipeline: build-and-sign
+spec:
+  pipelineRef:
+    name: build-and-sign
+  serviceAccountName: tekton-build-sa
+  params:
+    - name: repo-url
+      value: "https://github.com/john-naeder/slsa-k8s-platform.git"
+    - name: revision
+      value: "main"
+    - name: image
+      value: "harbor.kythuat.vn/demo/demo-api:latest"
+    - name: dockerfile
+      value: "./Dockerfile"
+    - name: context
+      value: "code/src/demo-api"
+  workspaces:
+    - name: shared-workspace
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+  # Timeout: 30 minutes
+  timeouts:
+    pipeline: "30m"
