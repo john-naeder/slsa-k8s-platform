@@ -1,0 +1,49 @@
+# =============================================================================
+# Tekton EventListener — receives GitHub webhook events
+# =============================================================================
+#
+# When GitHub sends a push event, the EventListener:
+#   1. Receives the POST request
+#   2. Matches it against TriggerBindings (extract params)
+#   3. Creates a PipelineRun via TriggerTemplate
+#
+# The EventListener automatically creates a Service: el-github-listener
+# which we expose via Traefik IngressRoute + cloudflared.
+#
+# Expose URL: https://tekton.kythuat.vn
+# =============================================================================
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: github-listener
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/part-of: slsa-pipeline
+spec:
+  serviceAccountName: tekton-triggers-sa
+  triggers:
+    - name: github-push-demo-api
+      interceptors:
+        # ── Filter: only pushes to main branch ──
+        - ref:
+            name: "cel"
+          params:
+            - name: "filter"
+              value: >-
+                body.ref == 'refs/heads/main' &&
+                body.commits.exists(c, c.modified.exists(f, f.startsWith('code/src/demo-api/')))
+            - name: "overlays"
+              value:
+                - key: truncated_sha
+                  expression: "body.after.truncate(7)"
+      bindings:
+        - ref: github-push-binding
+      template:
+        ref: demo-api-build-template
+  resources:
+    kubernetesResource:
+      spec:
+        template:
+          spec:
+            serviceAccountName: tekton-triggers-sa
+            containers: []

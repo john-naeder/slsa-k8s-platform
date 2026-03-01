@@ -91,3 +91,22 @@ spec:
           value: $(params.context)
         - name: EXTRA_ARGS
           value: $(params.extra-args[*])
+
+    # ── Step 3: Promote — update deployment manifest with new digest ──
+    - name: promote
+      taskRef:
+        name: update-manifest
+      runAfter:
+        - build
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+        - name: ssh-directory
+          workspace: ssh-credentials
+      params:
+        - name: image
+          value: $(params.image)
+        - name: digest
+          value: $(tasks.build.results.IMAGE_DIGEST)
+        - name: manifest-path
+          value: "code/src/demo-api/k8s/deployment.yaml"

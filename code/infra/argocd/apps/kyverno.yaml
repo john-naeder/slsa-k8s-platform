@@ -19,6 +19,10 @@ spec:
       releaseName: kyverno
       valuesObject:
         replicaCount: 1
+        # Allow Harbor self-signed cert for image verification
+        features:
+          registryClient:
+            allowInsecure: true
         admissionController:
           replicas: 1
           resources:

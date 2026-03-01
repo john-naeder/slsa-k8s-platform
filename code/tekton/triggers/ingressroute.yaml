@@ -1,0 +1,19 @@
+# Traefik IngressRoute — expose Tekton EventListener for GitHub webhooks
+# Traffic flow: GitHub → Cloudflare → cloudflared → Traefik → el-github-listener
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: tekton-webhook
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/part-of: slsa-pipeline
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`tekton.kythuat.vn`)
+      kind: Rule
+      services:
+        # EventListener auto-creates a Service named el-<name>
+        - name: el-github-listener
+          port: 8080

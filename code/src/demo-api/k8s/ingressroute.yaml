@@ -1,0 +1,37 @@
+# Traefik IngressRoute — expose demo-api at https://demo.kythuat.vn
+# Traffic flow: Internet → Cloudflare CDN → cloudflared → Traefik → demo-api Service
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: demo-api
+  namespace: demo
+  labels:
+    app: demo-api
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`demo.kythuat.vn`)
+      kind: Rule
+      services:
+        - name: demo-api
+          port: 80
+      middlewares:
+        - name: demo-api-headers
+          namespace: demo
+
+---
+# Security headers middleware
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: demo-api-headers
+  namespace: demo
+spec:
+  headers:
+    frameDeny: true
+    browserXssFilter: true
+    contentTypeNosniff: true
+    forceSTSHeader: true
+    stsIncludeSubdomains: true
+    stsSeconds: 31536000

@@ -1,0 +1,71 @@
+# =============================================================================
+# TriggerTemplate — creates PipelineRun for demo-api on push
+# =============================================================================
+#
+# This template is instantiated by the EventListener when a matching
+# GitHub push event is received. It creates a PipelineRun that:
+#   1. Clones the source code
+#   2. Builds the OCI image with Kaniko
+#   3. Updates the deployment manifest with the new digest
+#   4. Tekton Chains auto-signs and generates provenance
+#   5. ArgoCD detects the Git change and auto-deploys
+# =============================================================================
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerTemplate
+metadata:
+  name: demo-api-build-template
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/part-of: slsa-pipeline
+spec:
+  params:
+    - name: git-repo-url
+      description: SSH URL of the Git repository
+    - name: git-revision
+      description: Git commit SHA to build
+    - name: git-repo-name
+      description: Repository name
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1
+      kind: PipelineRun
+      metadata:
+        generateName: demo-api-build-
+        namespace: tekton-pipelines
+        labels:
+          app.kubernetes.io/part-of: slsa-pipeline
+          tekton.dev/pipeline: build-and-sign
+          triggers.tekton.dev/trigger: github-push
+      spec:
+        pipelineRef:
+          name: build-and-sign
+        taskRunTemplate:
+          serviceAccountName: tekton-build-sa
+        params:
+          - name: repo-url
+            value: $(tt.params.git-repo-url)
+          - name: revision
+            value: $(tt.params.git-revision)
+          - name: image
+            value: "harbor.kythuat.vn/demo/demo-api:latest"
+          - name: dockerfile
+            value: "./Dockerfile"
+          - name: context
+            value: "code/src/demo-api"
+          - name: extra-args
+            value:
+              - "--insecure"
+              - "--skip-tls-verify"
+        workspaces:
+          - name: shared-workspace
+            volumeClaimTemplate:
+              spec:
+                accessModes:
+                  - ReadWriteOnce
+                resources:
+                  requests:
+                    storage: 1Gi
+          - name: ssh-credentials
+            secret:
+              secretName: git-ssh-credentials
+        timeouts:
+          pipeline: "30m"

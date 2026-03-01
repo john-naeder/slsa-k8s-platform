@@ -1,0 +1,58 @@
+# =============================================================================
+# Kyverno ClusterPolicy — Verify Image Cosign Signature
+# =============================================================================
+#
+# SLSA L3 admission gate: deny any Pod in the "demo" namespace whose
+# container images from Harbor are NOT signed with our Cosign key.
+#
+# This is the Zero Trust enforcement point — even if someone pushes a
+# malicious image to Harbor, it can't be deployed without a valid signature.
+#
+# Apply:
+#   kubectl apply -f verify-image-signature.yaml
+#
+# Test (should PASS):
+#   kubectl run test --image=harbor.kythuat.vn/demo/demo-api@sha256:... -n demo
+#
+# Test (should FAIL):
+#   kubectl run evil --image=nginx:latest -n demo
+# =============================================================================
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: verify-image-signature
+  annotations:
+    policies.kyverno.io/title: Verify Cosign Image Signature
+    policies.kyverno.io/category: Supply Chain Security
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Enforce SLSA L3 supply chain security by verifying that all container
+      images from Harbor are signed with our Cosign key pair. Images without
+      a valid signature are denied at admission time.
+spec:
+  validationFailureAction: Enforce
+  background: false
+  webhookTimeoutSeconds: 30
+  failurePolicy: Fail
+  rules:
+    - name: verify-harbor-image-signature
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - demo
+      verifyImages:
+        - imageReferences:
+            - "harbor.kythuat.vn/demo/*"
+          attestors:
+            - count: 1
+              entries:
+                - keys:
+                    publicKeys: |-
+                      -----BEGIN PUBLIC KEY-----
+                      MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFL4Fi8Y3AuJE/fUcC84FlYjhb9Ln
+                      g21CxmaHapq7SweqpXVI7hI+HeCzI5aRuGkm4qYw3nU58FgFrDj5pQTQfg==
+                      -----END PUBLIC KEY-----

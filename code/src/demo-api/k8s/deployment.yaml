@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: demo-api
-          image: harbor.kythuat.vn/demo/demo-api:latest
+          image: harbor.kythuat.vn/demo/demo-api@sha256:02158ff8444c164c542327acb5724b316ceb9717ee159a9e302a529f6c429da2
           ports:
             - containerPort: 8080
           env:
