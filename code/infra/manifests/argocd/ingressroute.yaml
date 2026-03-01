@@ -1,0 +1,67 @@
+# =============================================================================
+# Argo CD — Traefik IngressRoute (Cách 2: Cloudflare Tunnel → Traefik → Argo CD)
+# =============================================================================
+#
+# Luồng traffic:
+#   Internet → Cloudflare CDN (WAF/DDoS) → cloudflared Pod → Traefik → argocd-server
+#
+# Bảo mật (5 lớp):
+#   1. Cloudflare WAF + DDoS protection
+#   2. Cloudflare Access — Zero Trust auth (email OTP / SSO)
+#   3. Cloudflare Tunnel — encrypted, no open inbound ports
+#   4. Traefik — request routing + rate limiting
+#   5. Argo CD login — username/password
+#
+# Yêu cầu:
+#   - Cloudflare Tunnel đã cấu hình route: argocd.kythuat.vn → http://traefik.traefik.svc.cluster.local:80
+#   - Cloudflare Access policy đã tạo cho argocd.kythuat.vn
+#
+# Apply:
+#   kubectl apply -f ingressroute.yaml
+# =============================================================================
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: argocd-server
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd
+    app.kubernetes.io/component: server
+    app.kubernetes.io/part-of: platform
+spec:
+  entryPoints:
+    - web           # HTTP (port 80) — Cloudflare Tunnel forwards HTTP
+  routes:
+    - match: Host(`argocd.kythuat.vn`)
+      kind: Rule
+      services:
+        - name: argocd-server
+          port: 80
+      # Middleware: Security headers + rate limiting
+      middlewares:
+        - name: argocd-headers
+          namespace: argocd
+---
+# Security headers middleware
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: argocd-headers
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd
+    app.kubernetes.io/component: middleware
+spec:
+  headers:
+    # Chống XSS, clickjacking, MIME sniffing
+    frameDeny: true
+    contentTypeNosniff: true
+    browserXssFilter: true
+    # Strict Transport Security — force HTTPS (Cloudflare handles TLS)
+    stsSeconds: 31536000
+    stsIncludeSubdomains: true
+    stsPreload: true
+    # Content Security Policy
+    customResponseHeaders:
+      X-Robots-Tag: "noindex, nofollow"    # Không cho search engine index
+      Referrer-Policy: "strict-origin-when-cross-origin"
