@@ -1,0 +1,52 @@
+# Kyverno — Admission Policy Engine
+# Managed by Argo CD (App-of-Apps pattern)
+#
+# NOTE: Kyverno CRDs khá lớn. Argo CD cần annotation để handle.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kyverno
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    chart: kyverno
+    repoURL: https://kyverno.github.io/kyverno
+    targetRevision: "3.3.7"
+    helm:
+      releaseName: kyverno
+      valuesObject:
+        replicaCount: 1
+        admissionController:
+          replicas: 1
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+        backgroundController:
+          enabled: true
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
+        cleanupController:
+          enabled: true
+        reportsController:
+          enabled: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kyverno
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true        # Cần cho large CRDs (Kyverno CRDs > 256KB)
+      - SkipDryRunOnMissingResource=true

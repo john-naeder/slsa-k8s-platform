@@ -1,0 +1,20 @@
+---
+# =============================================================================
+# versions.yml — Phiên bản phần mềm
+#
+# File này chứa tất cả version pins cho các thành phần trong cluster.
+# Cập nhật tại đây khi muốn upgrade.
+# =============================================================================
+
+# Kubernetes
+k8s_version: "1.32"                    # Major.Minor cho apt repo
+k8s_version_full: "1.32.*"             # Pattern cho apt install
+
+# Container Runtime
+containerd_version: "latest"            # Version containerd.io từ Docker repo
+
+# CNI Plugins (binary)
+cni_plugins_version: "v1.6.2"
+
+# Flannel CNI
+flannel_manifest_url: "https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml"

@@ -1,0 +1,91 @@
+\chapter{Phân tích và Thiết kế hệ thống}\label{ch:design}
+
+\section{Kiến trúc tổng thể}
+
+% TODO: Vẽ sơ đồ kiến trúc tổng thể (tool-agnostic)
+% Developer → Source Control → CI/CD Build → Sign & Attest → Registry → Policy Gate → K8s Runtime
+
+Kiến trúc hệ thống được thiết kế theo mô hình phân lớp (layered architecture), trong đó mỗi lớp có thể thay thế công cụ cụ thể mà không ảnh hưởng đến các lớp còn lại. Kubernetes đóng vai trò là nền tảng core xuyên suốt hệ thống.
+
+% TODO: Bảng ánh xạ các lớp kiến trúc với công cụ
+% | Layer | Primary Option | Fallback Option |
+% | CI/CD | GitHub Actions | Tekton Pipelines |
+% | Build | Docker build / Kaniko | Buildah |
+% | Sign  | Cosign (keyless) | Cosign (key-based) |
+% | Provenance | slsa-github-generator / Tekton Chains | ... |
+% | SBOM | Syft | Trivy |
+% | Registry | GHCR | Harbor |
+% | Policy | Kyverno | Sigstore Policy Controller |
+
+\section{Thiết kế giai đoạn Source -- Quản lý mã nguồn}
+
+% TODO: Thiết kế chi tiết
+% - Branch protection rules (chặn force push, chặn xóa nhánh)
+% - Commit signing (GPG/SSH)
+% - Bắt buộc code review (ít nhất 1 reviewer)
+% - Status checks phải pass trước khi merge
+% - Secret scanning (TruffleHog / Gitleaks)
+% - SAST scanning (Semgrep)
+
+\section{Thiết kế giai đoạn Build -- Đáp ứng SLSA Level 3}
+
+\subsection{Môi trường Build phù du và cô lập}
+% TODO: Giải thích yêu cầu ephemeral + isolated
+% Phương án A (GitHub Actions):
+% - Mỗi workflow run chạy trên runner riêng biệt
+% - slsa-github-generator sử dụng reusable workflow để cách ly signing
+% Phương án B (Tekton on K8s):
+% - Mỗi TaskRun chạy trong Pod riêng, pod bị hủy sau khi hoàn thành
+% - Tekton Chains chạy ở Control Plane level
+
+\subsection{Tạo Provenance}
+% TODO:
+% - In-toto attestation format
+% - buildDefinition: buildType, externalParameters (repo URL, commit SHA)
+% - runDetails: builder.id, metadata
+% - subject: image digest (SHA256)
+% Phương án A: slsa-github-generator tự tạo
+% Phương án B: Tekton Chains tự observe và tạo
+
+\subsection{Tạo SBOM}
+% TODO:
+% - Sử dụng Syft hoặc Trivy để quét image
+% - Xuất định dạng SPDX hoặc CycloneDX
+% - Gắn SBOM vào OCI registry (cosign attach sbom)
+
+\subsection{Ký số -- Digital Signing}
+% TODO:
+% - Keyless signing workflow qua Sigstore:
+%   1. CI system request OIDC token
+%   2. Fulcio issue short-lived certificate
+%   3. Cosign sign image + provenance + SBOM
+%   4. Record to Rekor transparency log
+% - Fallback: key-based signing (cosign generate-key-pair)
+
+\section{Thiết kế giai đoạn Deploy -- Zero Trust trên Kubernetes}
+
+\subsection{Kiến trúc Admission Controller}
+% TODO: Sơ đồ luồng xử lý
+% kubectl apply → API Server → Admission Webhook (Kyverno) → Verify → Allow/Deny
+
+\subsection{Thiết kế Policy Rules}
+% TODO: Liệt kê các policy rules
+% Policy 1: Chặn image không có chữ ký (unsigned image)
+% Policy 2: Chặn image không có SLSA provenance
+% Policy 3: Chặn image từ builder không tin cậy (builder.id mismatch)
+% Policy 4: Chặn image tham chiếu bằng tag (bắt buộc dùng digest)
+% Policy 5: Kiểm tra SBOM đính kèm
+% Mô hình: deny-by-default
+
+\section{Thiết kế kịch bản kiểm thử và tấn công mô phỏng}
+
+% TODO: Bảng kịch bản kiểm thử
+%
+% | # | Kịch bản | Mô tả | Kết quả mong đợi |
+% |---|---|---|---|
+% | 1 | Happy Path | Image hợp lệ, signed, có provenance | Deploy thành công |
+% | 2 | Unsigned Image | Image không có chữ ký | Bị chặn bởi Admission Controller |
+% | 3 | Modified Image | Sửa tag sau build (digest mismatch) | Bị chặn |
+% | 4 | No Provenance | Image signed nhưng thiếu provenance | Bị chặn |
+% | 5 | Untrusted Builder | Provenance từ builder không tin cậy | Bị chặn |
+% | 6 | Tag-based Deploy | Deploy dùng tag thay vì digest | Bị chặn (tùy policy) |

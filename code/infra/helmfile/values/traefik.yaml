@@ -1,0 +1,57 @@
+# Traefik Helm values
+# Chart: traefik/traefik
+# Docs: https://doc.traefik.io/traefik/getting-started/install-traefik/#use-the-helm-chart
+
+# ClusterIP — không cần LoadBalancer (cloudflared forwards traffic trực tiếp vào Traefik)
+service:
+  type: ClusterIP
+
+# Port configuration
+ports:
+  web:
+    port: 8000
+    exposedPort: 80
+    protocol: TCP
+  websecure:
+    port: 8443
+    exposedPort: 443
+    protocol: TCP
+
+# Enable Kubernetes providers
+providers:
+  kubernetesIngress:
+    enabled: true
+  kubernetesCRD:
+    enabled: true
+    allowCrossNamespace: true   # Cho phép IngressRoute cross-namespace
+
+# Dashboard (chỉ truy cập qua IngressRoute, không expose trực tiếp)
+ingressRoute:
+  dashboard:
+    enabled: true
+
+# Access logs cho debugging & observability
+logs:
+  access:
+    enabled: true
+    format: json   # Structured logs — Promtail parse dễ hơn
+
+# Prometheus metrics
+metrics:
+  prometheus:
+    entryPoint: metrics
+
+# Resource limits
+resources:
+  requests:
+    cpu: 100m
+    memory: 64Mi
+  limits:
+    memory: 256Mi
+
+# --- Node Scheduling ---
+# Traefik nhẹ — chạy trên worker nào cũng được.
+# Dùng label node-role=worker (được gán bằng kubectl label, xem README).
+nodeSelector:
+  node-role: worker
+tolerations: []

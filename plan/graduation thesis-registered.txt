@@ -1,0 +1,16 @@
+Tên đề tài:
+Thiết kế và triển khai hệ thống Zero Trust Software Supply Chain trên Kubernetes theo chuẩn SLSA Level 3
+
+Mô tả:
+Nghiên cứu và triển khai hệ thống Zero Trust Software Supply Chain cho Kubernetes theo chuẩn SLSA Level 3, nhằm đảm bảo an toàn cho quy trình build và triển khai container image, ngăn chặn các tấn công giả mạo và chèn mã độc trong CI/CD pipeline.
+
+Yêu cầu:
+- Nghiên cứu các công nghệ và tiêu chuẩn liên quan đến DevSecOps, Zero Trust Architecture và Software Supply Chain Security.
+- Xây dựng pipeline CI/CD theo chuẩn SLSA Level 3, đảm bảo tính toàn vẹn và truy vết nguồn gốc của container image.
+- Áp dụng cơ chế ký số container image và tạo các bằng chứng xác thực (provenance, attestation).
+- Tạo và quản lý SBOM (Software Bill of Materials), thực hiện quét và đánh giá lỗ hổng bảo mật.
+- Triển khai Kubernetes Admission Controller (Kyverno hoặc tương đương) để kiểm soát việc triển khai container theo mô hình Zero Trust.
+- Thực nghiệm, mô phỏng các kịch bản tấn công và đánh giá hiệu quả của giải pháp đề xuất.
+- Demo hệ thống và đánh giá kết quả đạt được.
+
+Thời gian thực hiện 01/03/2026 - 01/06/2026

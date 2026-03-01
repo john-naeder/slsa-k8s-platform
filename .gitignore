@@ -1,0 +1,181 @@
+# ============================================================
+#  .gitignore - DevSecOps Graduation Thesis Project
+# ============================================================
+
+# ===================== OS & Editor =====================
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+*.code-workspace
+
+# ===================== Secrets & Credentials =====================
+# QUAN TRỌNG: Không bao giờ commit secrets
+*.pem
+*.key
+*.crt
+*.csr
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.env
+.env.*
+!.env.example
+*.secret
+secret*
+!secret*.example
+*credentials*
+!*credentials*.example
+kubeconfig
+kubeconfig-*
+**/secrets/
+**/vault-tokens/
+*.tfvars
+!*.tfvars.example
+token
+token.*
+.htpasswd
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+
+# ===================== Kubernetes =====================
+*.kubeconfig
+kube-flannel-local.yml
+*-join-command.sh
+node-list.txt
+
+# K8s manifest secrets (keep examples)
+**/manifests/**/secret.yaml
+!**/manifests/**/secret.yaml.example
+
+# ===================== Terraform / IaC =====================
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# ===================== Ansible =====================
+*.retry
+.vault_password
+**/ansible/**/.vault_password
+**/ansible/**/vault.yml
+!**/ansible/**/vault.yml.example
+
+# ===================== Bootstrap =====================
+**/bootstrap/bootstrap.env
+**/bootstrap/*.log
+
+# ===================== Docker =====================
+docker-compose.override.yml
+.docker/
+
+# ===================== Container / Build Artifacts =====================
+*.tar
+*.tar.gz
+*.img
+
+# ===================== CI/CD =====================
+.gitlab-ci-local/
+
+# ===================== Security Scanning =====================
+# Trivy, Grype, Syft, OWASP, etc.
+**/trivy-report.*
+**/grype-report.*
+**/sbom-*.json
+**/scan-results/
+**/security-reports/
+
+# ===================== Python =====================
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+venv/
+env/
+.tox/
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# ===================== Node.js =====================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm/
+package-lock.json
+yarn.lock
+
+# ===================== Go =====================
+/vendor/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+
+# ===================== Java / Maven / Gradle =====================
+target/
+*.jar
+*.war
+*.class
+.gradle/
+build/
+
+# ===================== LaTeX (Thesis) =====================
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.lof
+*.log
+*.lot
+*.out
+*.toc
+*.synctex.gz
+*.synctex(busy)
+*.nav
+*.snm
+*.vrb
+*.run.xml
+*.bcf
+*-blx.bib
+# Giữ PDF cuối cùng của thesis
+!thesis/thesis.pdf
+!thesis-proposal/thesis.pdf
+
+# ===================== Logs & Temp =====================
+*.log
+logs/
+tmp/
+temp/
+*.pid
+*.seed
+
+# ===================== Misc =====================
+*.bak
+*.orig
+*.patch
+*.diff

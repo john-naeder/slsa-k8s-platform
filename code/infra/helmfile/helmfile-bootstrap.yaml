@@ -1,0 +1,121 @@
+# =============================================================================
+# HELMFILE — BOOTSTRAP PLATFORM COMPONENTS (Option A: Full CNCF)
+# =============================================================================
+#
+# Mục đích: Cài đặt minimum viable platform ĐỂ Argo CD có thể chạy
+#           và quản lý tất cả remaining components qua GitOps.
+#
+# Chạy:
+#   helmfile -f helmfile-bootstrap.yaml diff     # Xem changes trước
+#   helmfile -f helmfile-bootstrap.yaml apply    # Apply (idempotent)
+#   helmfile -f helmfile-bootstrap.yaml destroy  # Tear down (nếu cần)
+#   helmfile -f helmfile-bootstrap.yaml list     # Xem trạng thái
+#
+# Thứ tự cài đặt (dependencies):
+#   1. cert-manager     (TLS foundation — mọi Ingress cần)
+#   2. traefik          (Ingress Controller — cần cert-manager cho TLS)
+#   3. sealed-secrets   (Encrypt secrets in Git — cần trước Argo CD)
+#   4. argocd           (GitOps CD — "king" — quản lý phần còn lại)
+#
+# NOTE: local-path-provisioner + cloudflared dùng kubectl apply (không phải Helm)
+#       → xem post-bootstrap steps bên dưới.
+#
+# Prerequisites:
+#   - K8s cluster running (kubeadm v1.32 via Ansible)
+#   - Flannel CNI installed (--iface=tailscale0)
+#   - Helm CLI installed
+#   - Helmfile CLI installed
+#   - helm-diff plugin: helm plugin install https://github.com/databus23/helm-diff
+# =============================================================================
+
+helmDefaults:
+  wait: true
+  waitForJobs: true
+  timeout: 600       # 10 minutes max per release
+  cleanupOnFail: true
+  createNamespace: true
+
+repositories:
+  - name: jetstack
+    url: https://charts.jetstack.io
+  - name: traefik
+    url: https://traefik.github.io/charts
+  - name: sealed-secrets
+    url: https://bitnami-labs.github.io/sealed-secrets
+  - name: argo
+    url: https://argoproj.github.io/argo-helm
+
+releases:
+  # ─────────────────────────────────────────────────────────────────
+  # 1. CERT-MANAGER — TLS Foundation
+  # ─────────────────────────────────────────────────────────────────
+  # Phải cài TRƯỚC mọi thứ khác — Traefik + Argo CD cần TLS.
+  - name: cert-manager
+    namespace: cert-manager
+    chart: jetstack/cert-manager
+    version: "1.16.3"
+    values:
+      - values/cert-manager.yaml
+
+  # ─────────────────────────────────────────────────────────────────
+  # 2. TRAEFIK — Ingress Controller
+  # ─────────────────────────────────────────────────────────────────
+  # Cần cert-manager cho TLS certificates.
+  # Luồng: cloudflared → Traefik → K8s Service → App Pod
+  - name: traefik
+    namespace: traefik
+    chart: traefik/traefik
+    version: "34.3.0"
+    needs:
+      - cert-manager/cert-manager
+    values:
+      - values/traefik.yaml
+
+  # ─────────────────────────────────────────────────────────────────
+  # 3. SEALED SECRETS — Encrypted Secrets in Git
+  # ─────────────────────────────────────────────────────────────────
+  # Cần trước Argo CD — Argo CD cần decrypt secrets từ Git.
+  - name: sealed-secrets
+    namespace: sealed-secrets
+    chart: sealed-secrets/sealed-secrets
+    version: "2.17.1"
+    values:
+      - values/sealed-secrets.yaml
+
+  # ─────────────────────────────────────────────────────────────────
+  # 4. ARGO CD — GitOps Continuous Delivery
+  # ─────────────────────────────────────────────────────────────────
+  # "King" component — sau khi Argo CD chạy, nó quản lý mọi thứ khác.
+  # Cần Traefik (Ingress) + Sealed Secrets (decrypt Git secrets).
+  - name: argocd
+    namespace: argocd
+    chart: argo/argo-cd
+    version: "7.8.7"
+    needs:
+      - traefik/traefik
+      - sealed-secrets/sealed-secrets
+    values:
+      - values/argocd.yaml
+
+# =============================================================================
+# POST-BOOTSTRAP STEPS (chạy sau helmfile apply)
+# =============================================================================
+#
+# Các component KHÔNG dùng Helm → chạy kubectl apply riêng:
+#
+# 1. local-path-provisioner (raw YAML manifest):
+#    chmod +x ../manifests/local-path-provisioner/install.sh
+#    ../manifests/local-path-provisioner/install.sh
+#
+# 2. cloudflared (Cloudflare Tunnel — token via K8s Secret):
+#    kubectl apply -f ../manifests/cloudflared/namespace.yaml
+#    kubectl create secret generic cloudflared-token --namespace=cloudflare --from-literal=tunnel-token=<TOKEN>
+#    kubectl apply -f ../manifests/cloudflared/deployment.yaml
+#
+# 3. ClusterIssuer cho Let's Encrypt (cert-manager CRD):
+#    kubectl apply -f ../manifests/cluster-issuer.yaml
+#
+# 4. Argo CD App-of-Apps (bootstrap steady-state management):
+#    kubectl apply -f ../argocd/app-of-apps.yaml
+#
+# =============================================================================

@@ -1,0 +1,97 @@
+---
+# =============================================================================
+# Role: cni_flannel
+# Deploy Flannel CNI và patch cho Tailscale interface
+# Chỉ chạy trên master node
+# =============================================================================
+
+- name: Apply Flannel manifest
+  ansible.builtin.command: >
+    kubectl --kubeconfig=/home/{{ k8s_admin_user }}/.kube/config
+    apply -f {{ flannel_manifest_url }}
+  become: true
+  become_user: "{{ k8s_admin_user }}"
+  register: flannel_apply
+  changed_when: "'created' in flannel_apply.stdout or 'configured' in flannel_apply.stdout"
+
+- name: Đợi Flannel DaemonSet sẵn sàng
+  ansible.builtin.pause:
+    seconds: 10
+
+- name: Patch Flannel dùng {{ vpn_interface }} interface
+  ansible.builtin.command: >
+    kubectl --kubeconfig=/home/{{ k8s_admin_user }}/.kube/config
+    -n kube-flannel patch daemonset kube-flannel-ds
+    --type=json
+    -p='[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--iface={{ vpn_interface }}"}]'
+  become: true
+  become_user: "{{ k8s_admin_user }}"
+  register: flannel_patch
+  changed_when: "'patched' in flannel_patch.stdout"
+  failed_when: false
+
+- name: Đợi Flannel rollout
+  ansible.builtin.command: >
+    kubectl --kubeconfig=/home/{{ k8s_admin_user }}/.kube/config
+    -n kube-flannel rollout status daemonset/kube-flannel-ds --timeout=120s
+  become: true
+  become_user: "{{ k8s_admin_user }}"
+  register: flannel_rollout
+  changed_when: false
+  failed_when: false
+
+- name: Đợi CoreDNS ready
+  ansible.builtin.command: >
+    kubectl --kubeconfig=/home/{{ k8s_admin_user }}/.kube/config
+    -n kube-system wait --for=condition=Ready pod -l k8s-app=kube-dns --timeout=120s
+  become: true
+  become_user: "{{ k8s_admin_user }}"
+  register: coredns_ready
+  changed_when: false
+  retries: 3
+  delay: 10
+  until: coredns_ready.rc == 0
+
+# --- Final verification ---
+- name: Lấy danh sách nodes
+  ansible.builtin.command: >
+    kubectl --kubeconfig=/home/{{ k8s_admin_user }}/.kube/config
+    get nodes -o wide
+  become: true
+  become_user: "{{ k8s_admin_user }}"
+  register: node_list
+  changed_when: false
+
+- name: Hiển thị nodes
+  ansible.builtin.debug:
+    var: node_list.stdout_lines
+
+- name: Lấy danh sách pods
+  ansible.builtin.command: >
+    kubectl --kubeconfig=/home/{{ k8s_admin_user }}/.kube/config
+    get pods -A
+  become: true
+  become_user: "{{ k8s_admin_user }}"
+  register: pod_list
+  changed_when: false
+
+- name: Hiển thị pods
+  ansible.builtin.debug:
+    var: pod_list.stdout_lines
+
+- name: Verify node IP = Tailscale IP
+  ansible.builtin.command: >
+    kubectl --kubeconfig=/home/{{ k8s_admin_user }}/.kube/config
+    get node {{ inventory_hostname }}
+    -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}'
+  become: true
+  become_user: "{{ k8s_admin_user }}"
+  register: node_ip_check
+  changed_when: false
+
+- name: Thông báo kết quả IP check
+  ansible.builtin.debug:
+    msg: >
+      Node IP: {{ node_ip_check.stdout }}
+      {{ '✓ Đúng Tailscale IP' if node_ip_check.stdout == tailscale_ip
+         else '⚠ KHÔNG khớp Tailscale IP (' + tailscale_ip + ')! Kiểm tra kubelet --node-ip' }}

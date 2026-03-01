@@ -1,0 +1,47 @@
+# cert-manager Helm values
+# Chart: jetstack/cert-manager
+# Docs: https://cert-manager.io/docs/installation/helm/
+
+# Install CRDs via Helm (recommended approach)
+crds:
+  enabled: true
+  keep: true   # Don't delete CRDs on helm uninstall
+
+# --- Node Scheduling ---
+# cert-manager nhẹ — chạy trên worker nào cũng được
+nodeSelector:
+  node-role: worker
+
+# Resource limits for bare metal (constrained environment)
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    memory: 128Mi
+
+webhook:
+  nodeSelector:
+    node-role: worker
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      memory: 64Mi
+
+cainjector:
+  nodeSelector:
+    node-role: worker
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      memory: 128Mi
+
+# Prometheus metrics (consumed by kube-prometheus-stack later)
+prometheus:
+  enabled: true
+  servicemonitor:
+    enabled: false   # Will be enabled when monitoring is deployed via Argo CD

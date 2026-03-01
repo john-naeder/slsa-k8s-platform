@@ -1,0 +1,63 @@
+\chapter{Tổng quan đề tài}\label{ch:introduction}
+
+\section{Bối cảnh và lý do chọn đề tài}
+
+Trong bối cảnh công nghệ thông tin hiện đại, an ninh chuỗi cung ứng phần mềm (Software Supply Chain Security) đã trở thành một trong những ưu tiên chiến lược cấp bách nhất. Các cuộc tấn công chấn động như SolarWinds (2020), Codecov (2021), Log4Shell (2021) và xz-utils (2024) đã phơi bày một thực tế: tin tặc không chỉ nhắm vào ứng dụng trực tiếp mà đang khai thác các điểm yếu trong hệ thống hạ tầng xây dựng và các thư viện mã nguồn mở phụ thuộc.
+
+Mô hình bảo mật truyền thống -- chỉ bảo vệ vòng ngoài (perimeter security) -- đã không còn đủ khả năng đối phó với các vector tấn công tinh vi nhắm vào toàn bộ vòng đời phát triển phần mềm. Mô hình Zero Trust với nguyên tắc ``Never trust, always verify'' cung cấp một cách tiếp cận phù hợp hơn, yêu cầu xác minh mọi thành phần tại mọi giai đoạn.
+
+Khung tiêu chuẩn SLSA (Supply-chain Levels for Software Artifacts) -- được phát triển bởi OpenSSF dựa trên các thực tiễn bảo mật của Google -- cung cấp một mô hình trưởng thành với các cấp độ bảo mật tăng dần, giúp tổ chức đánh giá và cải thiện tính toàn vẹn chuỗi cung ứng một cách có hệ thống.
+
+Kubernetes, với vai trò là nền tảng orchestration container phổ biến nhất hiện nay, cung cấp cơ chế Admission Controller cho phép kiểm soát chặt chẽ việc triển khai container -- tạo điều kiện lý tưởng để hiện thực hóa mô hình Zero Trust tại điểm cuối của chuỗi cung ứng.
+
+% TODO: Bổ sung thêm dẫn chứng và trích dẫn
+
+\section{Mục tiêu nghiên cứu}
+
+Các mục tiêu chính của đồ án bao gồm:
+
+\begin{itemize}
+    \item Nghiên cứu các công nghệ và tiêu chuẩn liên quan đến DevSecOps, Zero Trust Architecture và Software Supply Chain Security.
+    \item Xây dựng pipeline CI/CD theo chuẩn SLSA Level 3, đảm bảo tính toàn vẹn và truy vết nguồn gốc của container image.
+    \item Áp dụng cơ chế ký số container image và tạo các bằng chứng xác thực (provenance, attestation).
+    \item Tạo và quản lý SBOM (Software Bill of Materials), thực hiện quét và đánh giá lỗ hổng bảo mật.
+    \item Triển khai Kubernetes Admission Controller để kiểm soát việc triển khai container theo mô hình Zero Trust.
+    \item Thực nghiệm, mô phỏng các kịch bản tấn công và đánh giá hiệu quả của giải pháp.
+\end{itemize}
+
+\section{Đối tượng và phạm vi nghiên cứu}
+
+\subsection{Đối tượng nghiên cứu}
+\begin{itemize}
+    \item Quy trình CI/CD an toàn theo chuẩn SLSA Level 3
+    \item Cơ chế ký số và xác thực container image (Sigstore/Cosign)
+    \item Kubernetes Admission Controller và Policy Engine
+    \item Software Bill of Materials (SBOM) và quét lỗ hổng bảo mật
+\end{itemize}
+
+\subsection{Phạm vi nghiên cứu}
+\begin{itemize}
+    \item \textbf{Nền tảng core:} Kubernetes (triển khai local cluster hoặc cloud)
+    \item \textbf{CI/CD:} GitHub Actions hoặc Tekton Pipelines (tùy theo đánh giá khả thi)
+    \item \textbf{Signing \& Attestation:} Sigstore ecosystem (Cosign, Fulcio, Rekor)
+    \item \textbf{Policy Engine:} Kyverno hoặc tương đương
+    \item \textbf{SBOM:} Syft hoặc Trivy (chuẩn SPDX/CycloneDX)
+\end{itemize}
+
+\subsection{Giới hạn}
+\begin{itemize}
+    \item Đồ án tập trung vào khía cạnh bảo mật chuỗi cung ứng, không đi sâu vào phát triển ứng dụng.
+    \item Sample application chỉ mang tính minh họa, ưu tiên tính đơn giản.
+    \item Không bao gồm: runtime security monitoring, network policies, hermetic builds (SLSA L4).
+\end{itemize}
+
+\section{Bố cục đồ án}
+
+Đồ án gồm các phần như sau:
+\begin{itemize}
+    \item \textbf{Chương \ref{ch:introduction}}: Tổng quan đề tài -- Trình bày bối cảnh, mục tiêu, phạm vi nghiên cứu.
+    \item \textbf{Chương \ref{ch:background}}: Cơ sở lý thuyết -- Trình bày nền tảng kiến thức về Supply Chain Security, Zero Trust, SLSA, Kubernetes.
+    \item \textbf{Chương \ref{ch:design}}: Phân tích và Thiết kế hệ thống -- Kiến trúc tổng thể và thiết kế chi tiết từng giai đoạn.
+    \item \textbf{Chương \ref{ch:implementation}}: Triển khai và Đánh giá -- Cài đặt, cấu hình, kịch bản kiểm thử, đánh giá kết quả.
+    \item \textbf{Chương \ref{ch:conclusion}}: Kết luận và Hướng phát triển.
+\end{itemize}

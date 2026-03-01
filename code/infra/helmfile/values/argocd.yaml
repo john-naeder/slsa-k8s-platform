@@ -1,0 +1,77 @@
+# Argo CD Helm values
+# Chart: argo/argo-cd
+# Docs: https://argo-cd.readthedocs.io/en/stable/operator-manual/installation/
+
+# Server — ClusterIP (exposed via Traefik IngressRoute + cloudflared)
+server:
+  service:
+    type: ClusterIP
+
+  # Insecure mode — TLS terminated at Traefik/Cloudflare level
+  # (nếu không bật, Argo CD tự TLS → double TLS với Traefik)
+  extraArgs:
+    - --insecure
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      memory: 256Mi
+
+# Controller
+controller:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      memory: 512Mi
+
+# Repo server
+repoServer:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      memory: 256Mi
+
+# Redis (embedded)
+redis:
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      memory: 128Mi
+
+# ApplicationSet controller (for App-of-Apps pattern)
+applicationSet:
+  enabled: true
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      memory: 128Mi
+
+# Notifications (optional — can be enabled later)
+notifications:
+  enabled: false
+
+# Dex (SSO — disabled for thesis, login bằng admin password)
+dex:
+  enabled: false
+
+# --- Node Scheduling ---
+# Argo CD components khá nặng (controller, repo-server) → ưu tiên userver-home-worker
+global:
+  nodeSelector:
+    workload-type: heavy
+
+# Config — repositories that Argo CD can access
+configs:
+  params:
+    # UI server runs without TLS (TLS at Traefik)
+    server.insecure: true

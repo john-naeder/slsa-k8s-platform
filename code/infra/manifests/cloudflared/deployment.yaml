@@ -1,0 +1,74 @@
+# =============================================================================
+# cloudflared — Cloudflare Tunnel Deployment
+# =============================================================================
+#
+# Tạo outbound tunnel từ K8s cluster → Cloudflare edge.
+# Token được đọc từ K8s Secret (KHÔNG hardcode trong YAML).
+#
+# Tạo secret trước khi apply:
+#   kubectl create secret generic cloudflared-token \
+#     --namespace=cloudflare \
+#     --from-literal=tunnel-token=<YOUR_TOKEN>
+#
+# Hoặc dùng Sealed Secrets:
+#   kubeseal < secret.yaml > sealed-secret.yaml
+#   kubectl apply -f sealed-secret.yaml
+#
+# Apply:
+#   kubectl apply -f namespace.yaml
+#   kubectl apply -f deployment.yaml
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudflared
+  namespace: cloudflare
+  labels:
+    app.kubernetes.io/name: cloudflared
+    app.kubernetes.io/component: tunnel
+    app.kubernetes.io/part-of: networking
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cloudflared
+  template:
+    metadata:
+      labels:
+        app: cloudflared
+    spec:
+      containers:
+        - name: cloudflared
+          image: cloudflare/cloudflared:2024.12.2
+          args:
+            - tunnel
+            - --no-autoupdate
+            - run
+            - --token
+            - $(TUNNEL_TOKEN)
+          env:
+            - name: TUNNEL_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: cloudflared-token
+                  key: tunnel-token
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          livenessProbe:
+            httpGet:
+              path: /ready
+              port: 2000
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 2000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      restartPolicy: Always

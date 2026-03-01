@@ -1,0 +1,72 @@
+\input{styles/settings}
+
+% === THÔNG TIN ĐỒ ÁN ===
+% TODO: Cập nhật thông tin bên dưới cho đúng
+\ctname{THIẾT KẾ VÀ TRIỂN KHAI HỆ THỐNG ZERO TRUST SOFTWARE SUPPLY CHAIN TRÊN KUBERNETES THEO CHUẨN SLSA LEVEL 3}
+\cstuname{Họ và Tên Sinh Viên}
+\csCouncil{Công nghệ thông tin}
+\csSupervise{TS. Tên Giảng Viên}
+\cttime{2026}
+% \csdeptname{KHOA CÔNG NGHỆ THÔNG TIN}
+
+\thesislayout
+
+\begin{document}
+% Trang bìa
+\coverpage
+
+\frontmatter
+
+% Lời cam đoan
+\begin{declaration}
+Tôi cam đoan đây là công trình do tôi tự thực hiện dưới sự hướng dẫn của TS. Tên Giảng Viên. Các nội dung nghiên cứu, số liệu và kết quả là trung thực. Các số liệu, công trình sử dụng của tác giả khác đều được trích dẫn nguồn gốc rõ ràng. Tất cả phần mềm, mã nguồn được sử dụng trong đồ án này đều có giấy phép mã nguồn mở.
+
+Nếu phát hiện có bất kỳ sự gian lận nào, tôi xin chịu hoàn toàn trách nhiệm.
+
+\begin{flushright}
+{Họ và Tên Sinh Viên}
+\end{flushright}
+\end{declaration}
+
+\newpage
+
+% Lời cảm ơn
+\begin{acknowledgments}
+% TODO: Viết lời cảm ơn
+Lời cảm ơn sẽ được bổ sung sau.
+\end{acknowledgments}
+
+% Tóm tắt
+\begin{abstract}
+% TODO: Viết tóm tắt sau khi hoàn thành đồ án
+Đồ án nghiên cứu và triển khai hệ thống Zero Trust Software Supply Chain cho Kubernetes theo chuẩn SLSA Level 3, nhằm đảm bảo an toàn cho quy trình build và triển khai container image. Hệ thống bao gồm pipeline CI/CD tự động tạo provenance và ký số container image, quản lý SBOM, và Kubernetes Admission Controller kiểm soát việc triển khai container theo mô hình Zero Trust. Kết quả thực nghiệm cho thấy hệ thống có khả năng ngăn chặn hiệu quả các kịch bản tấn công giả mạo và chèn mã độc trong chuỗi cung ứng phần mềm.
+
+\textbf{Từ khóa:} Zero Trust, Software Supply Chain, SLSA, Kubernetes, Container Security, Sigstore, Provenance, SBOM.
+\end{abstract}
+
+% Mục lục
+\tableofcontents
+% Danh mục bảng
+\listoftables
+% Danh mục hình
+\listoffigures
+
+\mainmatter
+\fancyhead{}
+\renewcommand{\footrulewidth}{0.4pt}
+\pagestyle{fancy} 
+\renewcommand{\chaptermark}[1]{\markboth{#1}{#1}}
+\fancyhead[R]{\chaptername\ \thechapter\ --\ \leftmark}
+
+% === CÁC CHƯƠNG ===
+\input{chapters/ch1-introduction}
+\input{chapters/ch2-background}
+\input{chapters/ch3-design}
+\input{chapters/ch4-implementation}
+\input{chapters/ch5-conclusion}
+
+% Tài liệu tham khảo
+\bibliographystyle{plain} 
+\bibliography{refs}
+
+\end{document}

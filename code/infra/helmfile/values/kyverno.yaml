@@ -1,0 +1,46 @@
+# Kyverno Helm values
+# Chart: kyverno/kyverno
+# Docs: https://kyverno.io/docs/installation/
+
+# Single replica (bare metal dev/thesis environment)
+replicaCount: 1
+
+# Background scanning (detect non-compliant existing resources)
+backgroundController:
+  enabled: true
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      memory: 128Mi
+
+# Admission controller
+admissionController:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      memory: 256Mi
+
+# Cleanup controller
+cleanupController:
+  enabled: true
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      memory: 64Mi
+
+# Reports controller
+reportsController:
+  enabled: true
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      memory: 128Mi

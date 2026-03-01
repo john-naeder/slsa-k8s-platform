@@ -1,0 +1,106 @@
+Phần Mở Đầu
+
+    Trang bìa, Lời cam đoan, Lời cảm ơn.
+
+    Mục lục, Danh mục hình ảnh, Danh mục bảng biểu, Danh mục từ viết tắt (VD: CI/CD, SLSA, K8s, OCI, SBOM, OPA...).
+
+    Tóm tắt đồ án (Abstract) - Viết bằng tiếng Việt và tiếng Anh.
+
+Chương 1: Tổng quan đề tài
+
+Chương này giúp hội đồng hiểu được tại sao đề tài này lại quan trọng.
+
+    1.1. Bối cảnh và lý do chọn đề tài: Đề cập đến các cuộc tấn công chuỗi cung ứng nổi tiếng (như SolarWinds, Log4j) và sự thiếu hụt của các mô hình bảo mật truyền thống (chỉ bảo vệ vòng ngoài).
+
+    1.2. Mục tiêu nghiên cứu: * Xây dựng một pipeline CI/CD an toàn theo nguyên tắc Zero Trust.
+
+        Đạt được các yêu cầu khắt khe của chuẩn SLSA Level 3 (tạo Provenance, môi trường build độc lập...).
+
+        Áp dụng các chính sách kiểm soát khi deploy lên Kubernetes.
+
+    1.3. Đối tượng và phạm vi nghiên cứu: Giới hạn rõ các công cụ sẽ sử dụng (VD: GitLab CI/Tekton, Sigstore/Cosign, Kyverno/OPA, Kubernetes) và những gì không nằm trong phạm vi đồ án.
+
+    1.4. Bố cục đồ án: Giới thiệu tóm tắt nội dung các chương tiếp theo.
+
+Chương 2: Cơ sở lý thuyết
+
+Cung cấp nền tảng kiến thức cho các công nghệ và khái niệm được áp dụng.
+
+    2.1. Software Supply Chain & Các rủi ro bảo mật: Định nghĩa chuỗi cung ứng phần mềm (Source -> Build -> Artifact -> Deploy) và các vector tấn công phổ biến ở từng giai đoạn.
+
+    2.2. Mô hình bảo mật Zero Trust: Khái niệm "Never trust, always verify" và cách áp dụng nó vào quy trình phát triển phần mềm (không tin tưởng bất kỳ code commit, build runner hay container image nào nếu chưa được xác thực).
+    Getty Images
+
+    2.3. Khung tiêu chuẩn SLSA (Supply-chain Levels for Software Artifacts):
+
+        Tổng quan về SLSA.
+
+        Phân tích sâu SLSA Level 3: Nhấn mạnh vào 3 yếu tố cốt lõi: Source (Lưu trữ an toàn), Build (Môi trường build tạm thời, bị cô lập, Build as Code), và Provenance (Tạo xuất xứ không thể làm giả).
+
+    2.4. Kubernetes và Container Security: * Tổng quan K8s.
+
+        Admission Controllers trong K8s (cơ chế để chặn các image không an toàn).
+
+Chương 3: Phân tích và Thiết kế hệ thống Zero Trust Supply Chain
+
+Đây là chương quan trọng nhất, thể hiện tư duy thiết kế và giải pháp kỹ thuật của bạn.
+
+    3.1. Kiến trúc tổng thể: Trình bày sơ đồ luồng đi của mã nguồn từ lúc lập trình viên git push cho đến khi chạy trên K8s pod.
+
+    3.2. Thiết kế giai đoạn Source (Quản lý mã nguồn): Yêu cầu branch protection, bắt buộc code review, kiểm tra lỗ hổng mã nguồn (SAST) và quét secret.
+
+    3.3. Thiết kế giai đoạn Build đáp ứng SLSA Level 3:
+
+        Sử dụng công cụ CI/CD (VD: Tekton chạy trên K8s hoặc GitHub Actions) để tạo môi trường build phù hợp (ephemeral, isolated).
+
+        Tạo SBOM (Software Bill of Materials).
+
+        Tạo và ký số (Digital Signature) Provenance (thông tin xuất xứ) sử dụng các công cụ như Sigstore/Cosign.
+
+    3.4. Thiết kế giai đoạn Deploy (Zero Trust trên K8s):
+
+        Cấu hình Policy Engine (VD: Kyverno hoặc OPA Gatekeeper).
+
+        Quy trình kiểm tra (verify) chữ ký của Image, SBOM và Provenance trước khi cho phép K8s pull và chạy container.
+
+Chương 4: Triển khai và Đánh giá
+
+Chứng minh hệ thống bạn thiết kế hoạt động thực tế.
+
+    4.1. Môi trường và công cụ triển khai: Cấu hình phần cứng/đám mây, danh sách công cụ và phiên bản (VD: K8s v1.28, Cosign v2.x, Kyverno...).
+
+    4.2. Cài đặt và cấu hình chi tiết:
+
+        Cấu hình CI Pipeline (Code snippets về cách gen SBOM và Provenance).
+
+        Cấu hình Policy trên K8s (File YAML của Kyverno ClusterPolicy).
+
+    4.3. Kịch bản kiểm thử (Demo):
+
+        Kịch bản Happy Path: Mã nguồn sạch -> Build -> Ký số -> Deploy thành công.
+
+        Kịch bản Negative (Zero Trust Enforcement): * Cố tình sửa đổi Image tag sau khi build -> K8s chặn deploy.
+
+            Deploy một Image không có Provenance (không đạt SLSA L3) -> K8s chặn deploy.
+
+    4.4. Đánh giá kết quả: Đối chiếu kết quả đạt được với các tiêu chí của chuẩn SLSA Level 3. Đánh giá độ trễ (performance overhead) khi áp dụng quá trình verify chữ ký vào lúc deploy.
+
+Chương 5: Kết luận và Hướng phát triển
+
+    5.1. Kết luận: Tóm tắt những gì đã làm được (Xây dựng thành công pipeline đạt SLSA L3, bảo vệ K8s bằng Policy Engine).
+
+    5.2. Khó khăn gặp phải: Đóng gói ứng dụng, cấu hình keyless signing với OIDC...
+
+    5.3. Hướng phát triển tương lai: Nâng cấp lên SLSA Level 4 (yêu cầu Hermetic build, Reproducible build), tích hợp thêm DAST, phân tích lỗ hổng runtime trên K8s.
+
+Tài liệu tham khảo & Phụ lục
+
+    Trích dẫn chuẩn xác các tài liệu từ SLSA.dev, CNCF, NIST, v.v.
+
+    Phụ lục: Chứa các đoạn script dài, file YAML cấu hình đầy đủ.
+
+Một số lưu ý quan trọng để ghi điểm cao:
+
+    Hiểu rõ "Provenance" là gì: Đây là "linh hồn" của SLSA L3. Bạn phải giải thích rõ cách bạn tạo file JSON chứng minh image này được build từ commit nào, bởi runner nào, và làm sao để file JSON này không bị giả mạo.
+
+    Sigstore / Keyless Signing: Nên nghiên cứu công nghệ Sigstore (Cosign/Fulcio) vì nó là tiêu chuẩn de facto hiện nay cho việc ký artifact trong môi trường Cloud-Native.

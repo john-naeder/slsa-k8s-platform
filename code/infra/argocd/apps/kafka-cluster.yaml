@@ -1,0 +1,35 @@
+# Kafka Cluster (CRDs managed by Strimzi Operator)
+# Managed by Argo CD (App-of-Apps pattern)
+#
+# NOTE: Depends on Strimzi operator being installed first.
+#       Argo CD will retry if CRDs not available yet.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kafka-cluster
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    # Sync wave: deploy AFTER strimzi operator
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  source:
+    # TODO: Thay bằng Git repo URL thực tế
+    repoURL: https://github.com/<your-org>/thesis-infra.git
+    targetRevision: main
+    path: code/infra/k8s/manifests/kafka   # Kafka + KafkaTopic CRDs
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kafka
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 5
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m

@@ -1,0 +1,184 @@
+Tuyệt vời! Để hiện thực hóa đề tài Zero Trust Supply Chain trên K8s đạt chuẩn SLSA Level 3, việc lựa chọn bộ công cụ (stack) công nghệ là yếu tố sống còn. Bạn cần những công cụ thuộc hệ sinh thái CNCF (Cloud Native Computing Foundation) để đảm bảo tính chuẩn hóa và hiện đại.
+
+Dưới đây là bộ công cụ mã nguồn mở (Open-source) tối ưu nhất cho đề tài của bạn, được phân chia theo từng giai đoạn trong pipeline:
+1. Giai đoạn Build Automation (CI/CD Engine)
+
+Đây là trái tim của hệ thống. Để đạt SLSA Level 3, môi trường build phải là Isolated (cô lập) và Ephemeral (tạm thời - dùng xong xóa ngay).
+
+    Lựa chọn: Tekton Pipelines (kết hợp với Tekton Chains)
+
+    Tại sao chọn Tekton?
+
+        Native Kubernetes: Tekton chạy hoàn toàn trên K8s dưới dạng các Custom Resource Definitions (CRDs). Đây là điểm cộng lớn cho đồ án về K8s.
+
+        Isolation (Cô lập): Mỗi Task trong Tekton chạy trong một Pod riêng biệt. Điều này thỏa mãn yêu cầu của SLSA L3 về việc build process không bị can thiệp bởi các build khác.
+
+        Tekton Chains: Đây là một công cụ đi kèm (sub-project) cực kỳ quan trọng. Nó tự động quan sát quá trình build của Tekton và tự động tạo ra Provenance (Attestation), sau đó ký số nó. Bạn không cần viết script thủ công để tạo provenance.
+
+2. Giai đoạn Signing & Verification (Ký số & Xác thực)
+
+Đây là cốt lõi của Zero Trust. "Không tin tưởng image nếu không có chữ ký hợp lệ".
+
+    Lựa chọn: Sigstore (Cosign)
+
+    Tại sao chọn Cosign?
+
+        Chuẩn công nghiệp: Hiện là công cụ phổ biến nhất để ký container images, blobs, và artifacts.
+
+        Keyless Signing: Thay vì quản lý private key (rất dễ mất hoặc lộ), Cosign hỗ trợ chế độ "Keyless" sử dụng OIDC (OpenID Connect) để định danh người build (ví dụ: định danh GitHub Actions hoặc Tekton ServiceAccount). Đây là đỉnh cao của Zero Trust.
+
+        Tương thích: Tương thích hoàn hảo với định dạng OCI (Open Container Initiative).
+
+3. Giai đoạn SBOM (Software Bill of Materials)
+
+Để biết bên trong phần mềm có gì (để quét lỗ hổng), bạn cần danh sách nguyên vật liệu phần mềm.
+
+    Lựa chọn: Syft (để tạo SBOM) & Grype (để quét lỗ hổng từ SBOM)
+
+    Tại sao chọn Syft/Grype?
+
+        Của hãng Anchore, rất nổi tiếng về bảo mật container.
+
+        Syft có thể tạo ra SBOM chuẩn SPDX hoặc CycloneDX (đây là 2 chuẩn quốc tế bắt buộc phải nhắc đến trong đồ án).
+
+        Cosign có thể attach (đính kèm) file SBOM này vào Container Registry và ký luôn cả SBOM.
+
+4. Giai đoạn Policy Enforcement (Kiểm soát triển khai vào K8s)
+
+Đây là "cánh cổng" (Gatekeeper) của Zero Trust. Nếu vi phạm chính sách -> Chặn ngay lập tức.
+
+    Lựa chọn: Kyverno
+
+    Tại sao chọn Kyverno (thay vì OPA Gatekeeper)?
+
+        Native K8s: Kyverno sử dụng file YAML đơn giản để viết chính sách (Policy), rất dễ đọc và dễ trình bày trong báo cáo đồ án. (OPA dùng ngôn ngữ Rego khá phức tạp, dễ làm bạn mất thời gian học).
+
+        Tính năng Verify Image: Kyverno có sẵn tính năng tích hợp với Cosign để kiểm tra chữ ký và Provenance của Image ngay tại thời điểm Admission Controller.
+
+        Ví dụ Policy: "Chặn mọi image không được ký bởi khóa công khai X" hoặc "Chặn image không có SBOM".
+
+5. Giai đoạn Container Registry (Kho lưu trữ)
+
+Nơi chứa Image và các chữ ký đi kèm.
+
+    Lựa chọn: Harbor (hoặc GitHub Container Registry - GHCR)
+
+    Tại sao chọn Harbor?
+
+        Nếu bạn dựng lab local (trên máy ảo): Harbor là lựa chọn số 1. Nó là một Registry mã nguồn mở mạnh mẽ, có tích hợp sẵn chức năng quét lỗ hổng (Trivy) và ký số (Notary/Cosign).
+
+        Nếu bạn muốn đơn giản hóa: Dùng GHCR (của GitHub) để đỡ tốn tài nguyên cài đặt.
+
+Tóm tắt kiến trúc đề xuất cho đồ án (Architecture Stack)
+
+Để đồ án được đánh giá cao về tính logic, bạn hãy vẽ sơ đồ kết nối các công cụ này như sau:
+
+    Developer: Push code lên GitHub/GitLab.
+
+    CI (Tekton): Trigger pipeline trên K8s.
+
+        Bước 1: Tekton Task dùng Syft tạo SBOM.
+
+        Bước 2: Tekton Task dùng Kaniko hoặc Buildah để build Docker Image.
+
+        Bước 3: Tekton Chains tự động "bắt" lấy Image digest, tạo Provenance (SLSA L3), dùng Cosign để ký số (Sign) Image + SBOM + Provenance.
+
+        Bước 4: Push tất cả lên Harbor/GHCR.
+
+    CD (Deploy): User yêu cầu deploy lên K8s.
+
+    Guard (Kyverno):
+
+        Chặn yêu cầu deploy lại.
+
+        Lấy Image digest, tìm chữ ký và Provenance trên Registry.
+
+        Dùng Public Key (hoặc OIDC identity) để xác thực (Verify).
+
+        Kiểm tra xem Provenance có đúng là được build từ repo GitHub quy định không?
+
+    Runtime: Nếu Kyverno thấy hợp lệ -> Cho phép Pod chạy.
+
+Lời khuyên cho bạn khi làm Demo:
+
+Bạn nên tập trung cấu hình Tekton Chains và Kyverno ClusterPolicy. Đây là 2 điểm "ăn tiền" nhất thể hiện:
+
+    Tự động hóa bảo mật (Automated Security).
+
+    Ngăn chặn xâm nhập (Zero Trust Enforcement).
+
+Bạn có cần mình hỗ trợ viết một đoạn mẫu Kyverno Policy để kiểm tra chữ ký Image (phần sẽ đưa vào báo cáo chương 3 hoặc 4) không?
+
+
+Tuyệt vời. Để hiện thực hóa được kiến trúc Zero Trust Supply Chain đạt chuẩn SLSA Level 3 trên Kubernetes, việc chọn đúng "vũ khí" mã nguồn mở (Open-source) là cực kỳ quan trọng.
+
+Dưới đây là bộ công cụ tối ưu nhất hiện nay, được cộng đồng Cloud Native Computing Foundation (CNCF) đánh giá rất cao. Tôi sẽ chia chúng theo từng giai đoạn trong luồng CI/CD mà bạn đã cấu trúc ở Chương 3.
+1. Giai đoạn Source (Quản lý mã nguồn & Kiểm thử sớm)
+
+Ở giai đoạn này, Zero Trust có nghĩa là không tin tưởng bất kỳ dòng code nào vừa được commit.
+
+    Nền tảng quản lý mã nguồn: GitLab CE hoặc Gitea. (Khuyến nghị dùng GitLab vì tích hợp CI/CD rất mạnh).
+
+    Quét Secret (Secret Scanning): TruffleHog hoặc Gitleaks.
+
+        Lý do: Phát hiện ngay lập tức nếu lập trình viên vô tình commit API Key, Token, hoặc Password lên Git.
+
+    Kiểm thử bảo mật mã nguồn tĩnh (SAST): Semgrep.
+
+        Lý do: Rất nhẹ, nhanh và hỗ trợ nhiều ngôn ngữ để quét các lỗ hổng như SQL Injection, XSS ngay từ lúc viết code.
+
+    Kiểm tra lỗ hổng thư viện (SCA): Dependabot hoặc Renovate.
+
+2. Giai đoạn Build (Đóng gói Container an toàn)
+
+SLSA Level 3 yêu cầu môi trường build phải tạm thời (ephemeral) và cô lập (isolated). Bạn không nên dùng Docker-in-Docker (DinD) vì rủi ro bảo mật (cần quyền root).
+
+    Công cụ CI/CD: Tekton (Cực kỳ khuyến nghị cho đề tài này).
+
+        Lý do: Tekton chạy hoàn toàn native trên Kubernetes. Mỗi step trong pipeline chạy trong một pod độc lập, thực thi xong sẽ bị hủy, đáp ứng hoàn hảo tiêu chí "Ephemeral environment" của SLSA L3.
+
+    Công cụ Build Container: Kaniko hoặc Buildah.
+
+        Lý do: Build container image không cần daemon (daemonless) và không cần quyền root (rootless), cực kỳ an toàn cho môi trường K8s.
+
+3. Giai đoạn Artifact (Tạo SBOM, Provenance & Ký số)
+
+Đây là "linh hồn" của đề tài để đạt SLSA Level 3.
+
+    Tạo SBOM (Software Bill of Materials): Syft (của Anchore) hoặc Trivy.
+
+        Lý do: Tự động quét image vừa build để liệt kê toàn bộ các package/thư viện bên trong, xuất ra định dạng chuẩn SPDX hoặc CycloneDX.
+
+    Tạo Provenance và Ký số (Signing): Hệ sinh thái Sigstore (Cosign) kết hợp với Tekton Chains.
+
+        Lý do: Tekton Chains sẽ tự động quan sát pipeline của Tekton, ghi nhận lại chính xác commit nào, ai chạy, chạy bằng runner nào để tạo ra file Provenance. Sau đó, nó dùng Cosign để ký số lên Image, SBOM và cả file Provenance đó rồi đẩy lên Registry. Cơ chế Keyless signing của Sigstore giúp bạn không phải đau đầu quản lý private key.
+
+4. Giai đoạn Registry & Triển khai (Lưu trữ & GitOps)
+
+    Lưu trữ Image (Container Registry): Harbor.
+
+        Lý do: Harbor hỗ trợ lưu trữ OCI artifacts (không chỉ lưu Image mà lưu được cả chữ ký Cosign và SBOM). Nó cũng tích hợp sẵn Trivy để quét lỗ hổng Image ngay trên kho lưu trữ.
+
+    Công cụ Triển khai (CD): Argo CD hoặc FluxCD (Mô hình GitOps).
+
+        Lý do: GitOps là tiêu chuẩn của DevSecOps. ArgoCD sẽ tự động kéo (pull) cấu hình từ Git về K8s, ngăn chặn việc con người can thiệp thủ công (push) trực tiếp vào cluster.
+
+5. Giai đoạn Deploy/Runtime (Thực thi Zero Trust trên K8s)
+
+Khi ArgoCD yêu cầu K8s kéo Image về chạy, hệ thống cần một "người gác cổng" để xác minh mọi thứ trước khi cho phép.
+
+    Policy Engine (Admission Controller): Kyverno.
+
+        Lý do: Kyverno dễ dùng hơn OPA Gatekeeper vì viết luật (policy) bằng YAML thuần túy thay vì ngôn ngữ Rego phức tạp.
+
+        Vai trò trong đề tài: Bạn sẽ viết một policy trên Kyverno yêu cầu: Chỉ cho phép chạy Pod nếu Image đó có chữ ký số hợp lệ từ Cosign VÀ đi kèm với Provenance đạt chuẩn SLSA L3. Nếu ai đó cố tình deploy một image chưa được ký hoặc build thủ công trên máy cá nhân, Kyverno sẽ chặn lại ngay lập tức (Block).
+
+Tóm tắt luồng công cụ lý tưởng cho đồ án của bạn:
+GitLab (Code) -> Tekton (CI) -> Kaniko (Build) -> Syft (SBOM) -> Tekton Chains + Cosign (Ký số & Provenance) -> Harbor (Registry) -> Argo CD (Deploy) -> Kyverno (Verify trên K8s).
+
+Với bộ công cụ này, đồ án của bạn sẽ mang tính thực tiễn cực kỳ cao và hoàn toàn có thể áp dụng vào các hệ thống doanh nghiệp lớn.
+
+Bạn có muốn tôi viết thử cho bạn một đoạn cấu hình (YAML) mẫu của Kyverno để xem cách nó kiểm tra chữ ký của Image trước khi cho phép deploy lên Kubernetes diễn ra như thế nào không?
+
+
+Gemini is AI and can make mistakes.

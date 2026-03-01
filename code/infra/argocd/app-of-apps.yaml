@@ -1,0 +1,43 @@
+# =============================================================================
+# ARGO CD — APP-OF-APPS ROOT APPLICATION
+# =============================================================================
+#
+# Mục đích: Root Application quản lý tất cả remaining platform components
+#           sau khi Helmfile bootstrap xong.
+#
+# Apply:
+#   kubectl apply -f app-of-apps.yaml
+#
+# Argo CD sẽ:
+#   1. Đọc thư mục apps/ từ Git repo
+#   2. Tạo Application CRD cho mỗi component
+#   3. Auto-sync mỗi application → install/upgrade Helm releases
+#   4. Drift detection → alert/revert nếu cluster state ≠ Git
+#
+# Từ đây, mọi thay đổi config = Git commit + PR → Argo CD auto-deploy.
+# =============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: platform-apps
+  namespace: argocd
+  # Finalizer đảm bảo Argo CD clean up child apps khi xóa root
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    # TODO: Thay bằng Git repo URL thực tế
+    repoURL: https://github.com/<your-org>/thesis-infra.git
+    targetRevision: main
+    path: code/infra/argocd/apps   # Thư mục chứa Application CRDs
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true       # Xóa resource nếu file bị xóa khỏi Git
+      selfHeal: true    # Revert drift — nếu ai kubectl edit → Argo revert
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true

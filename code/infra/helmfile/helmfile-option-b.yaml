@@ -1,0 +1,107 @@
+# =============================================================================
+# HELMFILE — ALL PLATFORM COMPONENTS (Option B: SaaS Lightweight)
+# =============================================================================
+#
+# Mục đích: Cài đặt TẤT CẢ K8s-side components cho Option B.
+#           Option B không dùng Argo CD → Helmfile là steady-state manager.
+#           CI/CD chạy trên GitHub Actions (SaaS) → không cần Tekton/Harbor/Argo.
+#
+# Chạy:
+#   helmfile -f helmfile-option-b.yaml diff     # Xem changes trước
+#   helmfile -f helmfile-option-b.yaml apply    # Apply (idempotent)
+#   helmfile -f helmfile-option-b.yaml destroy  # Tear down (nếu cần)
+#   helmfile -f helmfile-option-b.yaml list     # Xem trạng thái
+#
+# Components (chỉ 3 Helm releases):
+#   1. cert-manager   (TLS foundation)
+#   2. traefik        (Ingress Controller)
+#   3. kyverno        (Admission policy — SLSA enforcement)
+#
+# Non-Helm components (kubectl apply riêng):
+#   - local-path-provisioner
+#   - cloudflared
+#   - Metrics Server
+#
+# Prerequisites:
+#   - K8s cluster running (kubeadm v1.32 via Ansible)
+#   - Helm CLI + Helmfile CLI installed
+#   - helm-diff plugin installed
+# =============================================================================
+
+helmDefaults:
+  wait: true
+  waitForJobs: true
+  timeout: 600
+  cleanupOnFail: true
+  createNamespace: true
+
+repositories:
+  - name: jetstack
+    url: https://charts.jetstack.io
+  - name: traefik
+    url: https://traefik.github.io/charts
+  - name: kyverno
+    url: https://kyverno.github.io/kyverno
+
+releases:
+  # ─────────────────────────────────────────────────────────────────
+  # 1. CERT-MANAGER — TLS Foundation
+  # ─────────────────────────────────────────────────────────────────
+  - name: cert-manager
+    namespace: cert-manager
+    chart: jetstack/cert-manager
+    version: "1.16.3"
+    values:
+      - values/cert-manager.yaml
+
+  # ─────────────────────────────────────────────────────────────────
+  # 2. TRAEFIK — Ingress Controller
+  # ─────────────────────────────────────────────────────────────────
+  - name: traefik
+    namespace: traefik
+    chart: traefik/traefik
+    version: "34.3.0"
+    needs:
+      - cert-manager/cert-manager
+    values:
+      - values/traefik.yaml
+
+  # ─────────────────────────────────────────────────────────────────
+  # 3. KYVERNO — Admission Policy Engine (SLSA Enforcement)
+  # ─────────────────────────────────────────────────────────────────
+  # Verify image signature + SLSA provenance từ GHCR at admission time.
+  - name: kyverno
+    namespace: kyverno
+    chart: kyverno/kyverno
+    version: "3.3.7"
+    needs:
+      - cert-manager/cert-manager   # Kyverno webhook cần cert-manager
+    values:
+      - values/kyverno.yaml
+
+# =============================================================================
+# POST-HELMFILE STEPS (chạy sau helmfile apply)
+# =============================================================================
+#
+# 1. local-path-provisioner:
+#    kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.30/deploy/local-path-provisioner.yaml
+#    kubectl patch storageclass local-path -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+#
+# 2. cloudflared:
+#    kubectl apply -f ../k8s/setup/cloudflared.yaml
+#
+# 3. Metrics Server:
+#    kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+#    kubectl patch deployment metrics-server -n kube-system --type='json' \
+#      -p='[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'
+#
+# 4. ClusterIssuer (Let's Encrypt):
+#    kubectl apply -f ../k8s/manifests/cluster-issuer.yaml
+#
+# 5. Kyverno policies (GHCR image verification + SLSA provenance):
+#    kubectl apply -f ../k8s/manifests/kyverno-policies/
+#
+# 6. Namespaces:
+#    kubectl create namespace demo
+#
+# =============================================================================

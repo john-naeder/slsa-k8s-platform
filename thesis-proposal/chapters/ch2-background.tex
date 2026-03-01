@@ -1,0 +1,111 @@
+\chapter{Cơ sở lý thuyết}\label{ch:background}
+
+\section{Software Supply Chain và các rủi ro bảo mật}
+
+\subsection{Định nghĩa chuỗi cung ứng phần mềm}
+% TODO: Định nghĩa chuỗi cung ứng phần mềm
+% Source Code → Dependencies → Build Process → Artifacts → Registry → Deployment
+
+\subsection{Các vector tấn công phổ biến}
+% TODO: Phân tích các vector tấn công ở từng giai đoạn
+% - Source: unauthorized commit, compromised repo
+% - Build: compromised build process, cache poisoning
+% - Dependency: dependency confusion, typosquatting
+% - Distribution: registry poisoning, MITM
+
+\subsection{Các cuộc tấn công tiêu biểu}
+% TODO: Case studies
+% - SolarWinds (2020): build process compromise
+% - Codecov (2021): CI script modification
+% - Log4Shell (2021): dependency vulnerability
+% - xz-utils (2024): long-term social engineering
+
+\section{Mô hình bảo mật Zero Trust}
+
+\subsection{Khái niệm Zero Trust}
+% TODO: Giới thiệu Zero Trust Architecture
+% - Nguyên tắc "Never trust, always verify"
+% - NIST SP 800-207
+
+\subsection{Áp dụng Zero Trust vào SDLC}
+% TODO: Cách áp dụng Zero Trust vào quy trình phát triển phần mềm
+% - Không tin tưởng bất kỳ code commit nào chưa verified
+% - Không tin tưởng build runner chưa xác thực
+% - Không tin tưởng container image chưa có chữ ký hợp lệ
+% - Verify at every stage
+
+\section{Khung tiêu chuẩn SLSA}
+
+\subsection{Tổng quan về SLSA}
+% TODO: Giới thiệu SLSA
+% - Nguồn gốc: Google Binary Authorization for Borg
+% - OpenSSF project
+% - Maturity model, không phải tool
+
+\subsection{Build Track -- Các cấp độ bảo mật}
+% TODO: Bảng phân tích Build L0 → L3
+% L0: No guarantees
+% L1: Automated build + provenance documentation
+% L2: Hosted build platform + signed provenance  
+% L3: Isolated/ephemeral build + unforgeable provenance
+
+\subsection{Source Track}
+% TODO: Source L1 → L4 (theo draft v1.2)
+% Tập trung giải thích L1-L3 (phần liên quan đến đồ án)
+
+\subsection{Threat Model theo SLSA}
+% TODO: Phân tích mô hình đe dọa
+% - Source threats
+% - Build threats  
+% - Packaging & Distribution threats
+% Ánh xạ với các cấp độ SLSA
+
+\subsection{Mô hình xây dựng và Provenance Schema}
+% TODO: 
+% - Build Model: Control Plane vs Build Environment
+% - In-toto attestation format
+% - Provenance schema: buildDefinition, runDetails
+% - externalParameters, resolvedDependencies
+
+\section{Kubernetes và Container Security}
+
+\subsection{Kiến trúc Kubernetes}
+% TODO: Tổng quan K8s
+% - Control Plane: API Server, etcd, Scheduler, Controller Manager
+% - Worker Nodes: kubelet, container runtime
+% - Pods, Deployments, Services
+
+\subsection{Admission Controllers trong Kubernetes}
+% TODO: Giải thích cơ chế Admission Controller
+% - Validating Webhooks
+% - Mutating Webhooks
+% - Luồng xử lý: API Request → Authentication → Authorization → Admission → etcd
+
+\subsection{OCI Image Format và Image Security}
+% TODO:
+% - OCI image spec
+% - Image digest vs tag (tại sao tag không an toàn)
+% - Image signing concepts
+
+\section{Hệ sinh thái công cụ liên quan}
+
+\subsection{Sigstore -- Hệ sinh thái ký số}
+% TODO: Giới thiệu Sigstore
+% - Cosign: ký và xác thực container image
+% - Fulcio: certificate authority (keyless signing via OIDC)
+% - Rekor: transparency log
+% - Keyless signing workflow
+
+\subsection{SBOM -- Software Bill of Materials}
+% TODO:
+% - Định nghĩa SBOM
+% - Các chuẩn: SPDX, CycloneDX
+% - Công cụ: Syft, Trivy
+% - Vai trò trong supply chain security
+
+\subsection{Policy Engines}
+% TODO: So sánh các policy engine
+% - Kyverno: YAML-native, dễ sử dụng, tích hợp Cosign
+% - OPA Gatekeeper: Rego language, mạnh nhưng phức tạp
+% - Sigstore Policy Controller
+% Giải thích tại sao chọn phương án linh hoạt

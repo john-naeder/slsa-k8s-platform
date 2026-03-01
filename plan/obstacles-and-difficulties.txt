@@ -1,0 +1,101 @@
+
+# KHÓ KHĂN VÀ TRỞ NGẠI — GHI NHẬN TOÀN BỘ QUÁ TRÌNH
+
+> File này tổng hợp mọi khó khăn kỹ thuật gặp phải trong quá trình chuẩn bị đồ án.
+> Nội dung tổng hợp chính thức xem tại: `plan/thesis-proposal-plan.md` Section IX.
+>
+> Danh sách:
+> - KK-1: Fedora → Ubuntu migration (SELinux — phân tích chi tiết bên dưới)
+> - KK-2: containerd CRI socket timing issue
+> - KK-3: WSL Worker Node limitations
+> - KK-4: MetalLB không cần thiết với cloudflared + Traefik
+> - KK-5: ELK Stack quá nặng cho bare metal → Loki + Promtail
+> - KK-6: Raw `helm install` là anti-pattern → Helmfile + Argo CD
+> - KK-7: Chicken-and-egg problem (Bootstrap vs Steady-state)
+>
+> **Trạng thái SELinux analysis bên dưới:** Tham khảo lịch sử — ban đầu dự định dùng Fedora + CRI-O
+> nhưng đã chuyển sang Ubuntu 24.04 + containerd. SELinux analysis vẫn có giá trị cho phần Phụ lục
+> hoặc "Hướng phát triển" trong báo cáo.
+
+---
+
+## [LỊCH SỬ] SELinux Analysis — Khi còn dùng Fedora + CRI-O
+
+> Câu hỏi gốc: "nếu tôi chuyển dịch hoàn toàn qua podman thì có ổn không?
+> thì như vậy tôi sẽ sử dụng toàn bộ node với fedora podman"
+
+### 1. Bản chất sự xung đột giữa SELinux và Kubernetes
+
+K8s được thiết kế để kiểm soát toàn bộ tài nguyên hệ thống (mạng, ổ cứng, tiến trình). Trong khi đó, SELinux lại là "cảnh sát" mặc định chặn tất cả mọi thứ nếu không được dán nhãn (label) cho phép một cách tường minh.
+
+Mặc định trên Fedora, SELinux ở chế độ **`Enforcing`** (Bắt buộc). Nó quản lý container theo 2 nhãn chính:
+
+* Tiền trình container sẽ chạy dưới nhãn: `container_t`
+* File/Thư mục mà container được phép đọc/ghi phải có nhãn: `container_file_t`
+
+Nếu một Pod (nhãn `container_t`) cố gắng ghi dữ liệu vào một thư mục trên ổ cứng laptop không có nhãn `container_file_t`, SELinux sẽ chặn ngay lập tức ở tầng Kernel (báo lỗi `Permission Denied`), mặc cho bạn có set quyền `chmod 777` đi chăng nữa.
+
+---
+
+### 2. Ảnh hưởng đến tầng Core K8s (Kubeadm, Kubelet & CRI-O)
+
+* **Kubelet:** `kubelet` cần quyền rất cao để mount ổ đĩa và cấu hình mạng (cùng với Tailscale/Flannel). Theo tài liệu chính thức của K8s, nếu bạn dùng `kubeadm`, bạn thường được khuyên chuyển SELinux sang chế độ `Permissive` (Chỉ cảnh báo, không chặn).
+* **Nhưng với Fedora + CRI-O:** Bạn **CÓ THỂ** giữ SELinux ở chế độ `Enforcing`. Gói `container-selinux` trên Fedora đã được Red Hat tối ưu rất tốt cho CRI-O. Tuy nhiên, bạn bắt buộc phải cấu hình đúng file `/etc/crio/crio.conf` để CRI-O biết cách tự động gán nhãn SELinux cho các Pod.
+
+---
+
+### 3. Ảnh hưởng trực tiếp đến các Component đồ án của bạn
+
+Dựa vào danh sách công cụ CNCF self-hosted bạn đã chọn, đây là những "bãi mìn" SELinux bạn sẽ dẫm phải:
+
+#### A. Harbor & Persistent Storage (Nạn nhân lớn nhất)
+
+Harbor cần lưu trữ Database (Postgres) và Image layers trên ổ cứng vật lý của Node (thông qua `Local Path Provisioner` hoặc `HostPath`).
+
+* **Vấn đề:** Pod của Harbor sẽ liên tục bị `CrashLoopBackOff` với lỗi `Permission Denied` vì không ghi được vào `/var/lib/harbor` hoặc `/opt/local-path-provisioner`.
+* **Cách giải quyết:** Bạn phải tự tay đổi nhãn SELinux cho thư mục chứa data của Harbor trên Node Worker bằng lệnh:
+`sudo chcon -Rt svirt_sandbox_file_t /đường/dẫn/thư/mục/data`
+
+#### B. Tekton Pipelines & Workspaces (Cực kỳ phức tạp)
+
+Tekton Pipeline hoạt động bằng cách tạo ra một Pod, bên trong có nhiều Container (step) chạy tuần tự và truyền dữ liệu cho nhau qua một ổ đĩa chung gọi là `Workspace`.
+
+* **Vấn đề:** Tương tự Harbor, nếu Workspace dùng ổ cứng local, SELinux sẽ chặn bước clone Git hoặc bước Kaniko đọc source code.
+* **Cách giải quyết:** Khi khai báo `PersistentVolume` (PV) cho Tekton, K8s có cơ chế tự động dán nhãn lại (relabel) bằng cách thêm hậu tố `:z` (cho phép nhiều container đọc/ghi) hoặc `:Z` (chỉ 1 container đọc/ghi) vào lệnh mount.
+
+#### C. Buildah / Kaniko (Build in Docker/Pod)
+
+Bạn sử dụng Kaniko hoặc Buildah để build OCI image bên trong Tekton Pod một cách rootless.
+
+* **Vấn đề:** Để Kaniko/Buildah giải nén các layer file system của một image, nó cần thực hiện các thao tác `mount` bên trong container. SELinux mặc định cấm ngặt một tiến trình `container_t` được thực hiện lệnh `mount`.
+* **Cách giải quyết:** Trong file YAML của Tekton Task, bạn phải thiết lập `securityContext` riêng biệt, đôi khi phải hạ cấp bảo mật của riêng Pod đó (ví dụ: tắt selinux policy cho riêng cái Pod build image) hoặc dùng profile `spc_t` (Super Privileged Container).
+
+#### D. Mạng lưới (Tailscale & Flannel)
+
+* **Vấn đề:** Tailscale tạo interface ảo `tailscale0` và Flannel tạo `flannel.1`. SELinux có thể chặn `kube-proxy` can thiệp vào Iptables để định tuyến traffic qua các interface này.
+* **Cách giải quyết:** Thường thì cài đặt chuẩn qua kho lưu trữ của Fedora đã xử lý việc này, nhưng nếu Pod không thể ra mạng Internet, bạn sẽ phải kiểm tra log của SELinux.
+
+---
+
+### Chiến lược đối phó thực chiến cho đồ án
+
+Vì việc giữ SELinux `Enforcing` toàn thời gian sẽ làm tăng gấp đôi thời gian debug của bạn, tôi đề xuất chiến lược "Lùi 1 bước, tiến 2 bước" sau đây để đảm bảo tiến độ 12 tuần của bạn:
+
+1. **Giai đoạn Setup (Tuần 1-4): Chuyển sang Permissive**
+* Chạy lệnh `sudo setenforce 0` trên Fedora để chuyển SELinux sang chế độ Permissive.
+* Lúc này SELinux không chặn gì cả, chỉ ghi log. Nó giúp bạn đảm bảo rằng Kubeadm, Tekton, Harbor, và Kyverno hoạt động hoàn hảo về mặt logic K8s. Tránh việc lẫn lộn giữa lỗi YAML cấu hình sai và lỗi do SELinux chặn.
+
+
+2. **Giai đoạn Tinh chỉnh (Tuần 5-8): Đọc Log và "Bắt bệnh"**
+* Trong lúc hệ thống đang chạy mượt ở chế độ Permissive, bạn mở file log `/var/log/audit/audit.log` trên Fedora.
+* Tìm tất cả các dòng có chữ `denied`. Đây là những thứ mà nếu bật Enforcing lên, hệ thống của bạn sẽ sập.
+
+
+3. **Giai đoạn Báo cáo (Tuần 9-12): Bật lại Enforcing (Điểm cộng tuyệt đối)**
+* Dùng công cụ `audit2allow` của Fedora để tự động sinh ra các rule cho phép (allow rules) dựa trên file log ở bước 2.
+* Gõ `sudo setenforce 1` để bật lại chế độ bảo vệ tối đa.
+* **Trong báo cáo đồ án:** Bạn dành hẳn một tiểu mục trong Chương 4 để trình bày việc bạn đã chinh phục SELinux như thế nào để bảo vệ cụm K8s. Hội đồng sẽ cực kỳ ấn tượng vì đây là chuẩn mực của một kỹ sư DevSecOps thực thụ, áp dụng Zero Trust ở cả tầng K8s (Kyverno) lẫn tầng Kernel (SELinux).
+
+
+
+Bạn có muốn tôi cung cấp các lệnh `audit2allow` cơ bản để bạn biết cách "dịch" log báo lỗi của SELinux thành rule cho phép không?

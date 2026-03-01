@@ -1,0 +1,88 @@
+\chapter{Triển khai và Đánh giá}\label{ch:implementation}
+
+\section{Môi trường triển khai}
+
+% TODO: Mô tả môi trường
+% - Phần cứng: CPU, RAM, OS (WSL2 / Linux)
+% - Kubernetes: version, kiểu setup (kubeadm / kind / k3s)
+% - Danh sách công cụ và phiên bản:
+%   + kubectl, cosign, syft, grype, kyverno
+%   + GitHub Actions / Tekton (tùy phương án)
+% - Container Runtime: containerd
+% - Registry: GHCR / Harbor
+
+\section{Triển khai Pipeline CI/CD}
+
+\subsection{Sample Application}
+% TODO: Mô tả app mẫu đơn giản (Go/Python web app)
+% - Mục đích: minh họa pipeline, không phải ứng dụng phức tạp
+% - Dockerfile, source code
+
+\subsection{Cấu hình CI Pipeline}
+% TODO: Trình bày cấu hình pipeline
+% Phương án A (GitHub Actions):
+% - Workflow YAML: build → sign → generate SBOM → generate provenance → push
+% - Sử dụng slsa-github-generator cho SLSA L3 provenance
+%
+% Phương án B (Tekton - nếu triển khai):
+% - Pipeline CRDs
+% - Tekton Chains configuration
+% - ServiceAccount, RBAC
+
+\subsection{Ký số và Tạo Attestation}
+% TODO: 
+% - Cosign sign workflow (keyless hoặc key-based)
+% - Attach SBOM to registry
+% - Verify provenance locally
+
+\section{Triển khai Policy Engine trên Kubernetes}
+
+\subsection{Cài đặt Kyverno}
+% TODO: Hướng dẫn cài đặt
+% helm install kyverno ...
+
+\subsection{Cấu hình ClusterPolicy}
+% TODO: Trình bày YAML configs cho từng policy
+% - verify-image-signature
+% - verify-slsa-provenance
+% - require-image-digest
+% - verify-sbom (nếu có)
+
+\section{Kết quả kiểm thử các kịch bản}
+
+\subsection{Kịch bản Happy Path}
+% TODO: Screenshots + logs
+% Image hợp lệ → deploy thành công
+
+\subsection{Kịch bản tấn công - Attack Scenarios}
+% TODO: Cho từng kịch bản:
+% - Mô tả thao tác tấn công
+% - Output / logs từ Kyverno (denial message)
+% - Screenshots minh chứng
+
+% Kịch bản 1: Deploy unsigned image
+% Kịch bản 2: Deploy modified image (tag tampering)
+% Kịch bản 3: Deploy image without provenance
+% Kịch bản 4: Deploy from untrusted builder
+
+\section{Đánh giá hiệu năng}
+
+% TODO: Bảng đo lường
+% | Metric | Không có Policy | Có Policy (Kyverno) | Overhead |
+% |---|---|---|---|
+% | Thời gian deploy Pod | x ms | y ms | z% |
+% | CPU usage (Kyverno) | - | x mCPU | - |
+% | RAM usage (Kyverno) | - | x Mi | - |
+% | Pipeline duration | x min | y min | z% |
+
+\section{Đối chiếu với tiêu chuẩn SLSA Level 3}
+
+% TODO: Bảng đối chiếu chi tiết
+% | Yêu cầu SLSA L3 | Mô tả | Đạt/Không đạt | Ghi chú |
+% |---|---|---|---|
+% | Automated build | Build tự động qua CI | ✓ | GitHub Actions / Tekton |
+% | Provenance generation | Tạo provenance in-toto | ✓ | slsa-generator / Chains |
+% | Signed provenance | Ký số bởi build platform | ✓ | Cosign keyless |
+% | Isolated build | Môi trường cô lập | ✓ | Runner riêng / Pod riêng |
+% | Ephemeral environment | Tạm thời, dùng xong hủy | ✓ | ... |
+% | Unforgeable provenance | Không thể giả mạo | ✓ | Control plane signing |
