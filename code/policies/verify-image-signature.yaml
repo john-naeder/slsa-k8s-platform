@@ -47,6 +47,7 @@ spec:
       verifyImages:
         - imageReferences:
             - "harbor.kythuat.vn/demo/*"
+          useCache: true
           attestors:
             - count: 1
               entries:
@@ -56,3 +57,7 @@ spec:
                       MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFL4Fi8Y3AuJE/fUcC84FlYjhb9Ln
                       g21CxmaHapq7SweqpXVI7hI+HeCzI5aRuGkm4qYw3nU58FgFrDj5pQTQfg==
                       -----END PUBLIC KEY-----
+                    rekor:
+                      ignoreTlog: true
+                    ctlog:
+                      ignoreSCT: true

@@ -40,6 +40,7 @@ spec:
       verifyImages:
         - imageReferences:
             - "harbor.kythuat.vn/demo/*"
+          useCache: true
           attestations:
             - type: https://slsa.dev/provenance/v0.2
               attestors:
@@ -51,10 +52,13 @@ spec:
                           MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFL4Fi8Y3AuJE/fUcC84FlYjhb9Ln
                           g21CxmaHapq7SweqpXVI7hI+HeCzI5aRuGkm4qYw3nU58FgFrDj5pQTQfg==
                           -----END PUBLIC KEY-----
+                        rekor:
+                          ignoreTlog: true
+                        ctlog:
+                          ignoreSCT: true
               conditions:
                 - all:
                     # Verify the build was done by Tekton Chains
-                    - key: "{{ invocation.configSource.uri || builder.id }}"
-                      operator: AnyIn
-                      value:
-                        - "https://tekton.dev/chains/v2"
+                    - key: "{{ builder.id }}"
+                      operator: Equals
+                      value: "https://tekton.dev/chains/v2"
