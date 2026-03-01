@@ -32,6 +32,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", healthHandler)
+	mux.HandleFunc("/readyz", readyzHandler)
 	mux.HandleFunc("/api/v1/events", eventsHandler)
 
 	log.Printf("demo-api starting on :%s", port)
@@ -46,6 +47,13 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 		"status":  "ok",
 		"service": "demo-api",
 		"version": version(),
+	})
+}
+
+func readyzHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"ready": "true",
 	})
 }
 
