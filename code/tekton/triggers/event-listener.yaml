@@ -31,7 +31,10 @@ spec:
             - name: "filter"
               value: >-
                 body.ref == 'refs/heads/main' &&
-                body.commits.exists(c, c.modified.exists(f, f.startsWith('code/src/demo-api/')))
+                body.commits.exists(c,
+                  c.modified.exists(f, f.startsWith('code/src/demo-api/')) ||
+                  c.added.exists(f, f.startsWith('code/src/demo-api/'))
+                )
             - name: "overlays"
               value:
                 - key: truncated_sha
