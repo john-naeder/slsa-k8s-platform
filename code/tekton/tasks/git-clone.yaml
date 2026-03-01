@@ -55,12 +55,14 @@ spec:
           value: $(workspaces.ssh-directory.bound)
         - name: WORKSPACE_SSH_DIRECTORY_PATH
           value: $(workspaces.ssh-directory.path)
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 65532
+        - name: HOME
+          value: /tmp/tekton-home
       script: |
         #!/usr/bin/env sh
         set -eu
+
+        # Ensure HOME is writable
+        mkdir -p "${HOME}"
 
         CHECKOUT_DIR="${WORKSPACE_OUTPUT_PATH}/${PARAM_SUBDIRECTORY}"
 
@@ -69,12 +71,31 @@ spec:
           rm -rf "${CHECKOUT_DIR}/."[!.]* 2>/dev/null || true
         fi
 
-        # Setup SSH if provided
+        # Setup SSH if provided — use GIT_SSH_COMMAND for explicit control
         if [ "${WORKSPACE_SSH_DIRECTORY_BOUND}" = "true" ]; then
-          cp -R "${WORKSPACE_SSH_DIRECTORY_PATH}" "${HOME}/.ssh"
-          chmod 700 "${HOME}/.ssh"
-          chmod -R 400 "${HOME}/.ssh"/*
-          ssh-keyscan github.com >> "${HOME}/.ssh/known_hosts" 2>/dev/null
+          # Find private key
+          SSH_KEY=""
+          for f in "${WORKSPACE_SSH_DIRECTORY_PATH}"/id_*; do
+            case "$f" in *.pub) continue ;; esac
+            SSH_KEY="$f"
+            break
+          done
+
+          if [ -n "${SSH_KEY}" ]; then
+            # Copy key to writable location (SSH requires strict perms)
+            mkdir -p "${HOME}/.ssh"
+            cp -L "${SSH_KEY}" "${HOME}/.ssh/key"
+            chmod 600 "${HOME}/.ssh/key"
+
+            # known_hosts
+            KNOWN_HOSTS_OPT="-o StrictHostKeyChecking=no"
+            if [ -f "${WORKSPACE_SSH_DIRECTORY_PATH}/known_hosts" ]; then
+              cp -L "${WORKSPACE_SSH_DIRECTORY_PATH}/known_hosts" "${HOME}/.ssh/known_hosts"
+              KNOWN_HOSTS_OPT="-o UserKnownHostsFile=${HOME}/.ssh/known_hosts"
+            fi
+
+            export GIT_SSH_COMMAND="ssh -i ${HOME}/.ssh/key ${KNOWN_HOSTS_OPT} -o IdentitiesOnly=yes"
+          fi
         fi
 
         git clone "${PARAM_URL}" "${CHECKOUT_DIR}"

@@ -11,10 +11,11 @@ metadata:
 spec:
   pipelineRef:
     name: build-and-sign
-  serviceAccountName: tekton-build-sa
+  taskRunTemplate:
+    serviceAccountName: tekton-build-sa
   params:
     - name: repo-url
-      value: "https://github.com/john-naeder/slsa-k8s-platform.git"
+      value: "git@github.com:john-naeder/slsa-k8s-platform.git"
     - name: revision
       value: "main"
     - name: image
@@ -23,6 +24,10 @@ spec:
       value: "./Dockerfile"
     - name: context
       value: "code/src/demo-api"
+    - name: extra-args
+      value:
+        - "--insecure"
+        - "--skip-tls-verify"
   workspaces:
     - name: shared-workspace
       volumeClaimTemplate:
@@ -32,6 +37,9 @@ spec:
           resources:
             requests:
               storage: 1Gi
+    - name: ssh-credentials
+      secret:
+        secretName: git-ssh-credentials
   # Timeout: 30 minutes
   timeouts:
     pipeline: "30m"

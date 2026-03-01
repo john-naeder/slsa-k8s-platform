@@ -31,6 +31,10 @@ spec:
       description: Build context (subdirectory within the repo)
       type: string
       default: "."
+    - name: extra-args
+      description: Extra args for Kaniko
+      type: array
+      default: []
 
   workspaces:
     - name: shared-workspace
@@ -85,3 +89,5 @@ spec:
           value: $(params.dockerfile)
         - name: CONTEXT
           value: $(params.context)
+        - name: EXTRA_ARGS
+          value: $(params.extra-args[*])
