@@ -16,6 +16,12 @@ spec:
     helm:
       releaseName: kube-prometheus
       valuesObject:
+        prometheusOperator:
+          admissionWebhooks:
+            certManager:
+              enabled: true          # Use cert-manager for webhook TLS (no Helm hooks)
+            patch:
+              enabled: false         # Disable admission webhook patch Jobs (avoids PreSync hook failure)
         grafana:
           adminPassword: changeme    # TODO: dùng SealedSecret thay thế
           persistence:
