@@ -1,19 +1,19 @@
 package main
 
 import (
-"context"
-"encoding/json"
-"fmt"
-"log"
-"net/http"
-"os"
-"os/signal"
-"sync"
-"sync/atomic"
-"syscall"
-"time"
+	"context"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"sync"
+	"sync/atomic"
+	"syscall"
+	"time"
 
-"github.com/segmentio/kafka-go"
+	"github.com/segmentio/kafka-go"
 )
 
 // Event mirrors the demo-api Event struct
