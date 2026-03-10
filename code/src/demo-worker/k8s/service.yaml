@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo-worker
+  namespace: demo
+  labels:
+    app: demo-worker
+spec:
+  selector:
+    app: demo-worker
+  ports:
+    - port: 80
+      targetPort: 8081
+      protocol: TCP
+  type: ClusterIP

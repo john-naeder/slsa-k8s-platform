@@ -1,0 +1,16 @@
+# KafkaTopic for demo events
+# Consumed by demo-worker, produced by demo-api
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: demo-events
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: demo-kafka
+spec:
+  partitions: 3
+  replicas: 1
+  config:
+    retention.ms: 604800000       # 7 days
+    segment.bytes: 107374182      # ~100 MiB
+    cleanup.policy: delete
